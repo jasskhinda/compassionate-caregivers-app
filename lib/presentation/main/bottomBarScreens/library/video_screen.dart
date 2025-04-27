@@ -50,6 +50,22 @@ class _VideoScreenState extends State<VideoScreen> {
   void _toggleFullScreen() {
     isFullScreen = !isFullScreen;
   }
+  // Future<void> rewind() async {
+  //   final currentTime = await _controller.currentTime;  // Get current time as double
+  //   final newTime = (currentTime - 10).clamp(0.0, currentTime);  // Ensure time doesn't go negative
+  //
+  //   // Seek to the new time, and make sure to start playing if it was paused
+  //   _controller.seekTo(seconds: newTime);
+  //   _controller.playVideo();  // Explicitly start playing
+  // }
+  // Future<void> forward() async {
+  //   final currentTime = await _controller.currentTime;  // Get current time as double
+  //   final newTime = currentTime + 10;  // Add 10 seconds
+  //
+  //   // Seek to the new time
+  //   _controller.seekTo(seconds: newTime);
+  //   _controller.playVideo();  // Explicitly start playing
+  // }
 
   @override
   void initState() {
@@ -197,6 +213,15 @@ class _VideoScreenState extends State<VideoScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      // ElevatedButton(
+                      //   onPressed: rewind,
+                      //   style: ElevatedButton.styleFrom(
+                      //       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                      //       backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
+                      //   ),
+                      //   child: const Icon(Icons.replay_10, color: Colors.white),
+                      // ),
+                      // const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: _togglePlayPause,
                         style: ElevatedButton.styleFrom(
@@ -214,6 +239,15 @@ class _VideoScreenState extends State<VideoScreen> {
                         ),
                         child: const Text('Full Screen', style: TextStyle(fontSize: 16, color: Colors.white)),
                       ),
+                      // const SizedBox(width: 10),
+                      // ElevatedButton(
+                      //   onPressed: forward,
+                      //   style: ElevatedButton.styleFrom(
+                      //       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                      //       backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
+                      //   ),
+                      //   child: const Icon(Icons.forward_10_rounded, color: Colors.white),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 15),

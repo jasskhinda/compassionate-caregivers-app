@@ -54,8 +54,8 @@ class _LoginUiState extends State<LoginUi> {
     // Set a timer to dismiss the loading dialog after 3 seconds
     Timer? loadingTimer;
     loadingTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
+      if (Navigator.canPop(context)) {
+
       }
     });
 
