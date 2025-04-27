@@ -1,0 +1,41 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cc-caregiver-app",
+          "appId": "1:584959824727:android:1df7a71455c38ffbbaa412",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cc-caregiver-app",
+          "configurations": {
+            "android": "1:584959824727:android:1df7a71455c38ffbbaa412",
+            "ios": "1:584959824727:ios:3559d7afc9f3ab96baa412",
+            "macos": "1:584959824727:ios:3559d7afc9f3ab96baa412",
+            "web": "1:584959824727:web:0b1f826d5a309052baa412",
+            "windows": "1:584959824727:web:765d5fda6407d948baa412"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}

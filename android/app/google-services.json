@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "584959824727",
+    "project_id": "cc-caregiver-app",
+    "storage_bucket": "cc-caregiver-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:584959824727:android:1df7a71455c38ffbbaa412",
+        "android_client_info": {
+          "package_name": "com.example.healthcare.healthcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGJrs4_RjyOTrgpz6AwSxb_-arT5NqcKk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
