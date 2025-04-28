@@ -55,7 +55,7 @@ class _LoginUiState extends State<LoginUi> {
     Timer? loadingTimer;
     loadingTimer = Timer(const Duration(seconds: 3), () {
       if (Navigator.canPop(context)) {
-
+        Navigator.pop(context);
       }
     });
 
@@ -89,14 +89,12 @@ class _LoginUiState extends State<LoginUi> {
           .doc(user.uid)
           .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
 
-      if (!mounted) return;
-
       // Then proceed to main screen
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.mainScreen,
-          (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
         );
       }
 

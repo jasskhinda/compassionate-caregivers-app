@@ -33,6 +33,7 @@ class CategoryServices {
     required String title,
     required String youtubeLink,
     required DateTime uploadedAt,
+    required bool isVimeo
   }) async {
     final videoRef = _db
         .collection('categories')
@@ -47,6 +48,7 @@ class CategoryServices {
       'title': title,
       'youtubeLink': youtubeLink,
       'uploadedAt': uploadedAt,
+      'isVimeo': isVimeo
     });
   }
 

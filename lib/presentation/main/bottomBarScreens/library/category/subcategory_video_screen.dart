@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:healthcare/component/appBar/settings_app_bar.dart';
 import 'package:healthcare/component/other/basic_button.dart';
+import 'package:healthcare/component/other/upload_video_dialog.dart';
 import 'package:healthcare/services/category_services.dart';
 import 'package:healthcare/utils/appRoutes/app_routes.dart';
 import 'package:intl/intl.dart';
@@ -90,58 +91,84 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          BasicTextButton(
-              width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
-              text: 'Upload Video',
-              buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
-              textColor: Colors.white,
-            onPressed: () async {
-              await showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text("Upload Video"),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: titleController,
-                        decoration: const InputDecoration(hintText: "Video Title"),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Upload video from youtube
+              BasicTextButton(
+                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
+                  text: 'Upload Video from youtube',
+                  fontSize: 14,
+                  buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
+                  textColor: Colors.white,
+                onPressed: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Upload Video"),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: titleController,
+                            decoration: const InputDecoration(hintText: "Video Title"),
+                          ),
+                          TextField(
+                            controller: linkController,
+                            decoration: const InputDecoration(hintText: "YouTube Link"),
+                          ),
+                        ],
                       ),
-                      TextField(
-                        controller: linkController,
-                        decoration: const InputDecoration(hintText: "YouTube Link"),
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        // Extract YouTube ID
-                        final String? youtubeVideoId = extractYouTubeVideoId(linkController.text);
-                        if (youtubeVideoId == null) {
-                          Navigator.pop(context); // Close dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Please enter a valid YouTube link")),
-                          );
-                          return;
-                        }
-                        firestore.addVideo(
-                          categoryName: categoryName,
-                          subcategoryName: subcategoryName,
-                          title: titleController.text.trim(),
-                          youtubeLink: youtubeVideoId.trim(),
-                          uploadedAt: DateTime.now(),
-                        );
-                        Navigator.pop(context);
-                        titleController.clear();
-                        linkController.clear();
-                      },
-                      child: Text("Upload", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            // Extract YouTube ID
+                            final String? youtubeVideoId = extractYouTubeVideoId(linkController.text);
+                            if (youtubeVideoId == null) {
+                              Navigator.pop(context); // Close dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Please enter a valid YouTube link")),
+                              );
+                              return;
+                            }
+                            firestore.addVideo(
+                              categoryName: categoryName,
+                              subcategoryName: subcategoryName,
+                              title: titleController.text.trim(),
+                              youtubeLink: youtubeVideoId.trim(),
+                              uploadedAt: DateTime.now(),
+                              isVimeo: false
+                            );
+                            Navigator.pop(context);
+                            titleController.clear();
+                            linkController.clear();
+                          },
+                          child: Text("Upload", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }
+                  );
+                }
+              ),
+
+              const SizedBox(width: 10),
+
+              // Upload video from vimeo
+              BasicTextButton(
+                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
+                  text: 'Upload Video from vimeo',
+                  fontSize: 14,
+                  buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
+                  textColor: Colors.white,
+                  onPressed: () async {
+                    await showDialog(
+                      context: context,
+                      builder: (context) => UploadVideoDialog(categoryName: categoryName, subcategoryName: subcategoryName),
+                    );
+                  }
+              ),
+            ],
           ),
 
           const SizedBox(height: 20)
@@ -160,12 +187,12 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                           ? AppUtils.getScreenSize(context).width * 0.45
                           : double.infinity,
                       child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 15),
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
                           child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                SizedBox(height: 10),
+                                const SizedBox(height: 10),
 
                                 // if (_isLoading)
                                 //   const Center(child: CircularProgressIndicator()),
@@ -197,11 +224,11 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
       stream: userVideoServices.getAssignedVideosForCaregiver(auth.currentUser!.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: NotFoundDialog(title: 'No Assigned Videos Found', description: 'You haven\'t been assigned any videos yet. Please check back later!'),);
+          return const Center(child: NotFoundDialog(title: 'No Assigned Videos Found', description: 'You haven\'t been assigned any videos yet. Please check back later!'),);
         }
 
         final videos = snapshot.data!;
