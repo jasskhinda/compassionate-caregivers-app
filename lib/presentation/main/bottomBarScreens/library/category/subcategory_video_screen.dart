@@ -7,10 +7,8 @@ import 'package:healthcare/component/other/upload_video_dialog.dart';
 import 'package:healthcare/services/category_services.dart';
 import 'package:healthcare/utils/appRoutes/app_routes.dart';
 import 'package:intl/intl.dart';
-
 import '../../../../../component/listLayout/assigned_video_layout.dart';
 import '../../../../../component/other/not_found_dialog.dart';
-import '../../../../../services/user_video_services.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
 class SubcategoryVideoScreen extends StatefulWidget {
@@ -32,6 +30,84 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
   // Text editing controller
   late TextEditingController titleController = TextEditingController();
   late TextEditingController linkController = TextEditingController();
+
+  // Assigned public video to caregiver
+  Future<void> markVideoAsAssignedByCaregiver({
+    required String videoTitle,
+    required String videoUrl,
+    required String categoryVideoId,
+    required String categoryName,
+    required String subcategoryName,
+  }) async {
+    if (!mounted) return;
+
+    final auth = FirebaseAuth.instance;
+    final firestore = FirebaseFirestore.instance;
+    final assignedDate = Timestamp.now();
+    final currentUid = auth.currentUser?.uid;
+
+    if (currentUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("User not logged in.")),
+      );
+      return;
+    }
+
+    try {
+      // Check if video is already assigned
+      final docRef = firestore
+          .collection("caregiver_videos")
+          .doc(currentUid)
+          .collection("videos")
+          .doc(categoryVideoId);
+
+      final docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        return;
+      }
+
+      // Proceed with assigning
+      await docRef.set({
+        "title": videoTitle,
+        "youtubeLink": videoUrl,
+        "progress": 0.0,
+        "completed": 0,
+        "assignedBy": "ioTlULiBOQZdYiF8oNNliczh0cB2",
+        "assignedDate": assignedDate,
+        "assignedTo": currentUid,
+        "videoId": categoryVideoId,
+      });
+
+      await firestore
+          .collection('categories')
+          .doc(categoryName)
+          .collection('subcategories')
+          .doc(subcategoryName)
+          .collection('videos')
+          .doc(categoryVideoId)
+          .set({
+        "assignedTo": FieldValue.arrayUnion([currentUid]),
+        "assignedBy": "ioTlULiBOQZdYiF8oNNliczh0cB2",
+        "assignedDate": assignedDate,
+      }, SetOptions(merge: true));
+
+      await firestore
+          .collection('Users')
+          .doc(currentUid)
+          .set({"assigned_video": FieldValue.increment(1)},
+          SetOptions(merge: true));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Video marked as assigned.")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    }
+  }
 
   // Get user video details
   Future<void> _getUserInfo() async {
@@ -97,8 +173,8 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
             children: [
               // Upload video from youtube
               BasicTextButton(
-                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
-                  text: 'Upload Video from youtube',
+                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.4,
+                  text: 'Public',
                   fontSize: 14,
                   buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
                   textColor: Colors.white,
@@ -106,7 +182,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                   await showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text("Upload Video"),
+                      title: const Text("Upload Public Video"),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -156,8 +232,8 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
 
               // Upload video from vimeo
               BasicTextButton(
-                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
-                  text: 'Upload Video from vimeo',
+                  width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.4,
+                  text: 'Private video',
                   fontSize: 14,
                   buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
                   textColor: Colors.white,
@@ -217,11 +293,11 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
   }
 
   Widget _assignedVideos(String categoryName, String subcategoryName) {
-    final UserVideoServices userVideoServices = UserVideoServices();
+    final CategoryServices categoryServices = CategoryServices();
     final FirebaseAuth auth = FirebaseAuth.instance;
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: userVideoServices.getAssignedVideosForCaregiver(auth.currentUser!.uid),
+      stream: categoryServices.getAssignedVideosForCaregiver(auth.currentUser!.uid, categoryName, subcategoryName),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -238,49 +314,80 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
           itemCount: videos.length,
           itemBuilder: (context, index) {
             final video = videos[index];
+            final isVimeo = video['isVimeo'] ?? '';
             final videoId = video['videoId'] ?? '';
             final videoTitle = video['title'] ?? '';
             final videoUrl = video['videoUrl'] ?? '';
-            final progress = video['progress'] ?? '';
-            final assignedByUid = video['assignedBy'] ?? '';
-            final caregiver = video['assignedTo'] ?? '';
-            String date = DateFormat('dd MMM yyyy').format(video['assignedDate'].toDate());
 
-            // Get admin name
-            return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('Users').doc(assignedByUid).get(),
-                builder: (context, snapshot) {
-                  String adminName = 'Loading...';
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.hasData) {
-                    final data = snapshot.data!.data() as Map<String, dynamic>;
-                    adminName = data['name'] ?? 'Unknown';
+            final progress = isVimeo == true ? video['progress'] ?? '' : null;
+            final caregiver = isVimeo == true ? video['assignedTo'] ?? '' : null;
+            final assignedByUid = isVimeo == true ? video['assignedBy'] ?? '' : null;
+            String date = isVimeo == true ?  DateFormat('dd MMM yyyy').format(video['assignedDate'].toDate()) : '';
+
+            if (isVimeo == true) {
+              // Get admin name
+              return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance.collection('Users').doc(
+                      assignedByUid).get(),
+                  builder: (context, snapshot) {
+                    String adminName = 'Loading...';
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        snapshot.hasData) {
+                      final data = snapshot.data!.data() as Map<String,
+                          dynamic>;
+                      adminName = data['name'] ?? 'Unknown';
+                    }
+                    return AssignedVideoLayout(
+                      videoTitle: videoTitle,
+                      adminName: adminName,
+                      progress: progress,
+                      date: date,
+                      onTap: () {
+                        Navigator.pushNamed(
+                            context,
+                            AppRoutes.vimeoVideoScreen,
+                            arguments: {
+                              'videoId': videoId,
+                              'date': date,
+                              'adminName': adminName,
+                              'videoTitle': videoTitle,
+                              'videoUrl': videoUrl,
+                              'caregiver': caregiver,
+                              'progress': progress,
+                              'categoryName': categoryName,
+                              'subcategoryName': subcategoryName
+                            }
+                        );
+                      },
+                    );
                   }
-                  return AssignedVideoLayout(
-                    videoTitle: videoTitle,
-                    adminName: adminName,
-                    progress: progress,
-                    date: date,
-                    onTap: () {
-                      Navigator.pushNamed(
-                          context,
-                          AppRoutes.videoScreen,
-                          arguments: {
-                            'videoId': videoId,
-                            'date': date,
-                            'adminName': adminName,
-                            'videoTitle': videoTitle,
-                            'videoUrl': videoUrl,
-                            'caregiver': caregiver,
-                            'progress': progress,
-                            'categoryName': categoryName,
-                            'subcategoryName': subcategoryName
-                          }
-                      );
-                    },
+              );
+            } else {
+              return AssignedVideoLayout(
+                videoTitle: videoTitle,
+                adminName: null,
+                progress: null,
+                date: '',
+                onTap: () {
+                  markVideoAsAssignedByCaregiver(videoTitle: videoTitle, videoUrl: videoUrl, categoryVideoId: videoId, categoryName: categoryName, subcategoryName: subcategoryName);
+                  Navigator.pushNamed(
+                      context,
+                      AppRoutes.videoScreen,
+                      arguments: {
+                        'videoId': videoId,
+                        'date': null,
+                        'adminName': null,
+                        'videoTitle': videoTitle,
+                        'videoUrl': videoUrl,
+                        'caregiver': null,
+                        'progress': null,
+                        'categoryName': categoryName,
+                        'subcategoryName': subcategoryName
+                      }
                   );
-                }
-            );
+                },
+              );
+            }
           },
         );
       },
@@ -314,6 +421,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
             final videoTitle = video['title'];
             final videoLink = video['youtubeLink'];
             final videoId = video['videoId'];
+            final isVimeo = video['isVimeo'];
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -321,7 +429,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                 onTap: () {
                   Navigator.pushNamed(
                     context,
-                    AppRoutes.videoScreen,
+                    isVimeo == true ? AppRoutes.vimeoVideoScreen : AppRoutes.videoScreen,
                     arguments: {
                       'videoId' : videoId,
                       'videoUrl': videoLink,
@@ -339,7 +447,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      BasicTextButton(
+                      isVimeo ? BasicTextButton(
                         text: 'Assign',
                         textColor: Colors.white,
                         buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
@@ -356,7 +464,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                             }
                           );
                         }
-                      ),
+                      ) : const SizedBox.shrink(),
                       const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
@@ -382,27 +490,6 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
 
                           if (confirm == true) {
                             try {
-                              // Delete from categories collection
-                              await FirebaseFirestore.instance
-                                  .collection('categories')
-                                  .doc(categoryName)
-                                  .collection('subcategories')
-                                  .doc(subcategoryName)
-                                  .collection('videos')
-                                  .doc(videoId)
-                                  .delete();
-
-                              // Delete from assigned_videos collection
-                              await FirebaseFirestore.instance
-                                  .collection('assigned_videos')
-                                  .where('videoId', isEqualTo: videoId)
-                                  .get()
-                                  .then((snapshot) {
-                                for (var doc in snapshot.docs) {
-                                  doc.reference.delete();
-                                }
-                              });
-
                               // Delete from caregiver_videos collection
                               // First get the assigned caregivers from categories
                               final videoDoc = await FirebaseFirestore.instance
@@ -426,22 +513,28 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                                     .delete();
                               }
 
-                              // Update assigned video count in Users collection
+                              // Update assigned_video count in Users collection
+                              for (String caregiverId in assignedCaregivers) {
+                                await FirebaseFirestore.instance
+                                    .collection('Users')
+                                    .doc(caregiverId)
+                                    .update({
+                                  'assigned_video': FieldValue.increment(-1),
+                                });
+                              }
+
+                              // Delete from categories collection
                               await FirebaseFirestore.instance
-                                  .collection('Users')
-                                  .where('assignedVideos', arrayContains: videoId)
-                                  .get()
-                                  .then((snapshot) {
-                                for (var doc in snapshot.docs) {
-                                  doc.reference.update({
-                                    'assignedVideos': FieldValue.arrayRemove([videoId]),
-                                    'assignedVideoCount': FieldValue.increment(-1)
-                                  });
-                                }
-                              });
+                                  .collection('categories')
+                                  .doc(categoryName)
+                                  .collection('subcategories')
+                                  .doc(subcategoryName)
+                                  .collection('videos')
+                                  .doc(videoId)
+                                  .delete();
 
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Video deleted successfully')),
+                                const SnackBar(content: Text('Video deleted successfully')),
                               );
                             } catch (e) {
                               ScaffoldMessenger.of(context).showSnackBar(

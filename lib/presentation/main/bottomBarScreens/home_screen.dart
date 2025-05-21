@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       child: _isLoading
-                          ? Center(child: CircularProgressIndicator())
+                          ? const Center(child: CircularProgressIndicator())
                           : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,8 +228,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                     icon: Icons.person
                                   )
                                 ),
-                              const SizedBox(width: 15),
-                              if (_role == 'Nurse')
+                            ],
+                          ),
+
+                          const SizedBox(height: 15),
+
+                          // Exam
+                          Text(
+                              _role == 'Admin' ? 'Exam Management' : 'Assigned Exams',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppUtils.getColorScheme(context).onSurface
+                              )
+                          ),
+                          const SizedBox(height: 4),
+                          if (_role == 'Admin')
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
                                 Expanded(
                                     child: MaterialButton(
                                       height: 84,
@@ -237,11 +254,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                           borderRadius: BorderRadius.circular(15)
                                       ),
                                       onPressed: () {
-                                        Navigator.pushNamed(context, AppRoutes.assignVideoScreen);
+                                        Navigator.pushNamed(context, AppRoutes.createExamScreen);
                                       },
                                       color: AppUtils.getColorScheme(context).tertiaryContainer,
                                       child: const Text(
-                                        'Assign Video',
+                                        'Create New Exams',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white
@@ -249,8 +266,50 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     )
                                 ),
-                            ],
-                          ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                    child: MaterialButton(
+                                      height: 84,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(15)
+                                      ),
+                                      onPressed: () {
+                                        Navigator.pushNamed(context, AppRoutes.manageExamScreen);
+                                      },
+                                      color: AppUtils.getColorScheme(context).tertiaryContainer,
+                                      child: const Text(
+                                        'Manage Exam',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white
+                                        ),
+                                      ),
+                                    )
+                                ),
+                              ],
+                            ),
+
+                          if (_role == 'Caregiver')
+                            SizedBox(
+                              width: double.infinity,
+                              child: MaterialButton(
+                                height: 84,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15)
+                                ),
+                                onPressed: () {
+                                  Navigator.pushNamed(context, AppRoutes.takeExamScreen);
+                                },
+                                color: AppUtils.getColorScheme(context).tertiaryContainer,
+                                child: const Text(
+                                  'View & Start Exam',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white
+                                  ),
+                                ),
+                              ),
+                            ),
 
                           const SizedBox(height: 18),
 
@@ -307,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final video = videos[index];
             final videoId = video['videoId'] ?? '';
             final videoTitle = video['title'] ?? '';
-            final videoUrl = video['videoUrl'] ?? '';
+            final videoUrl = video['youtubeLink'] ?? '';
             final progress = (video['progress'] as num?)?.toDouble() ?? 0.0;
             final assignedByUid = video['assignedBy'] ?? '';
             final assignedDate = video['assignedDate'] as Timestamp?;
@@ -315,13 +374,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Get admin name
             return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('Users').doc(assignedByUid).get(),
+                future: FirebaseFirestore.instance.collection('Users').doc(
+                    assignedByUid).get(),
                 builder: (context, snapshot) {
                   String adminName = 'Loading...';
                   if (snapshot.connectionState == ConnectionState.done &&
                       snapshot.hasData &&
                       snapshot.data!.data() != null) {
-                    final data = snapshot.data!.data() as Map<String, dynamic>;
+                    final data = snapshot.data!.data() as Map<String,
+                        dynamic>;
                     adminName = data['name'] ?? 'Unknown';
                   }
                   return AssignedVideoLayout(
@@ -331,15 +392,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     date: date,
                     onTap: () {
                       Navigator.pushNamed(
-                        context,
-                        AppRoutes.videoScreen,
-                        arguments: {
-                          'videoId': videoId,
-                          'date': date,
-                          'adminName': adminName,
-                          'videoTitle': videoTitle,
-                          'videoUrl': videoUrl
-                        }
+                          context,
+                          video.containsKey('restCaregiver') ? AppRoutes.vimeoVideoScreen : AppRoutes.videoScreen,
+                          arguments: {
+                            'videoId': videoId,
+                            'date': date,
+                            'adminName': adminName,
+                            'videoTitle': videoTitle,
+                            'videoUrl': videoUrl
+                          }
                       );
                     },
                   );

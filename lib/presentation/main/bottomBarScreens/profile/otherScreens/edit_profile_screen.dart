@@ -27,7 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _dob;
   String? _profileImageUrl;
   bool _isLoading = false;
-  File? _imageFile;
+  XFile? _imageFile;
 
   // Firebase instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -92,64 +92,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
-          _imageFile = File(pickedFile.path);
+          _imageFile = pickedFile;
         });
       }
     } catch (e) {
       debugPrint("Error picking image: $e");
-    }
-  }
-
-  // Upload image to Firebase Storage (Not Working for now)
-  Future<String?> _uploadImage() async {
-    if (_imageFile == null) return _profileImageUrl;
-
-    try {
-      String fileName = 'profile_images/${_auth.currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference storageRef = _storage.ref().child(fileName);
-
-      // Show upload progress
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-
-      UploadTask uploadTask;
-      if (kIsWeb) {
-        // For web platform - use the already picked file
-        final bytes = await _imageFile!.readAsBytes();
-        uploadTask = storageRef.putData(
-          bytes,
-          SettableMetadata(
-            contentType: 'image/jpeg',
-          ),
-        );
-      } else {
-        // Original functionality for mobile
-        uploadTask = storageRef.putFile(_imageFile!);
-      }
-
-      TaskSnapshot taskSnapshot = await uploadTask;
-      String downloadUrl = await taskSnapshot.ref.getDownloadURL();
-
-      // Close the progress dialog
-      if (context.mounted) {
-        Navigator.pop(context);
-      }
-
-      return downloadUrl;
-    } catch (e) {
-      debugPrint("Error uploading image: $e");
-      if (context.mounted) {
-        Navigator.pop(context); // Close the progress dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error uploading image: $e")),
-        );
-      }
-      return null;
     }
   }
 
@@ -182,7 +129,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           );
         } else {
-          uploadTask = storageRef.putFile(_imageFile!);
+          uploadTask = storageRef.putFile(File(_imageFile!.path));
         }
 
         TaskSnapshot taskSnapshot = await uploadTask;
@@ -200,7 +147,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await user.reauthenticateWithCredential(credential);
 
         // Update Email if changed
-        if (_emailController.text.isNotEmpty) {
+        if (_emailController.text.isNotEmpty && _emailController.text != user.email) {
           await user.verifyBeforeUpdateEmail(_emailController.text.trim());
 
           // Show SnackBar saying email verification email is sent
@@ -320,14 +267,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     },
                                   )
                                       : Image.file(
-                                    _imageFile!,
+                                    File(_imageFile!.path),
                                     fit: BoxFit.cover,
                                     height: 80,
                                     width: 80,
                                   )
                                       : _profileImageUrl != null
                                       ? CachedNetworkImage(
-                                    imageUrl: _profileImageUrl!,
+                                    imageUrl: _profileImageUrl!,  // Error updating profile: Unsupported operation: _Namespace
                                     fit: BoxFit.cover,
                                     height: 80,
                                     width: 80,
@@ -566,9 +513,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               _updateUserInfo();
                             },
                             color: AppUtils.getColorScheme(context).tertiaryContainer,
-                            child: Text('Save', style: TextStyle(color: Colors.white)),
+                            child: const Text('Save', style: TextStyle(color: Colors.white)),
                           ),
-                        ) : SizedBox()
+                        ) : const SizedBox()
                       ],
                     ),
                   ),

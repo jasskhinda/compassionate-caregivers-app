@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:healthcare/component/appBar/settings_app_bar.dart';
 import 'package:healthcare/component/listLayout/manage_user_layout.dart';
 import 'package:healthcare/component/other/input_text_fields/text_input.dart';
+import 'package:healthcare/services/exam_services.dart';
 import '../../../../component/other/basic_button.dart';
 import '../../../../services/email_service.dart';
 import '../../../../services/user_services.dart';
@@ -13,14 +14,19 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../component/listLayout/user_layout.dart';
 import '../../../../utils/appRoutes/app_routes.dart';
 
-class AssignVideoScreen extends StatefulWidget {
-  const AssignVideoScreen({super.key});
+class AssignExamScreen extends StatefulWidget {
+  const AssignExamScreen({super.key});
 
   @override
-  State<AssignVideoScreen> createState() => _AssignVideoScreenState();
+  State<AssignExamScreen> createState() => _AssignExamScreenState();
 }
 
-class _AssignVideoScreenState extends State<AssignVideoScreen> {
+class _AssignExamScreenState extends State<AssignExamScreen> {
+
+  // Firebase instance
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  // Search text view
   late TextEditingController _searchController;
 
   final UserServices _userServices = UserServices();
@@ -39,128 +45,76 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
     super.dispose();
   }
 
-  Future<void> _assignVideoToFirestore(
-      String videoTitle,
-      String videoUrl,
-      String categoryVideoId,
-      String categoryName,
-      String subcategoryName,
-  ) async {
-
-    if(!mounted) return;
-
-    // Show loading circle
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const Center(
-          child: CircularProgressIndicator(),
-        );
-      },
-    );
-
-    if (videoTitle.isEmpty || videoUrl.isEmpty || assignedCaregivers.isEmpty) {
-      if (!mounted) return;
-
-      // Close loading dialog - using a more reliable method
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Fill all details and select caregivers")));
+  void _assignExamToFirestore(String examID, String examTitle) async {
+    if (assignedCaregivers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select at least one caregiver.")),
+      );
       return;
     }
 
-    Timestamp assignedDate = Timestamp.now();
-    FirebaseAuth auth = FirebaseAuth.instance;
-    FirebaseFirestore firestore = FirebaseFirestore.instance;
-
-    // Store in `assigned_videos` collection
-    // await firestore.collection("assigned_videos").doc(categoryVideoId).set({
-    //   "title": videoTitle,
-    //   "videoUrl": videoUrl,
-    //   "videoId": categoryVideoId,
-    //   "assignedCaregivers": assignedCaregivers,
-    //   "assignedBy": auth.currentUser?.uid,
-    //   "assignedDate": assignedDate
-    // });
-
-    // Store per caregiver in `caregiver_videos` collection
-    for (String caregiverId in assignedCaregivers) {
-      await firestore.collection("caregiver_videos").doc(caregiverId).collection("videos").doc(categoryVideoId).set({
-        "title": videoTitle,
-        "youtubeLink": videoUrl,
-        "progress": 0.0, // Changed from 0 to 0.0 to ensure it's a double
-        "completed": 0,
-        "assignedBy": auth.currentUser?.uid,
-        "assignedDate": assignedDate,
-        "assignedTo": caregiverId,
-        "videoId": categoryVideoId,
-        "restCaregiver" : assignedCaregivers
-      });
-    }
-
-    // Update with assigned caregiver
-    await firestore
-        .collection('categories')
-        .doc(categoryName)
-        .collection('subcategories')
-        .doc(subcategoryName)
-        .collection('videos')
-        .doc(categoryVideoId)
-        .set({"assignedTo": assignedCaregivers, "assignedBy": auth.currentUser?.uid, "assignedDate": assignedDate}, SetOptions(merge: true));
-
-    // Increment assigned video number for each caregiver
-    for (String caregiverId in assignedCaregivers) {
-      await firestore
-          .collection('Users')
-          .doc(caregiverId)
-          .set({"assigned_video": FieldValue.increment(1)}, SetOptions(merge: true));
-      print("Updating caregiverId: $caregiverId");
-    }
-
-    // Send notifications to assigned caregivers
-    await _notificationService.sendNotificationToUsers(
-      userIds: assignedCaregivers,
-      title: 'New Video Assigned',
-      body: 'A new video "$videoTitle" has been assigned to you.',
-      data: {
-        'videoId': categoryVideoId,
-        'videoTitle': videoTitle,
-        'youtubeLink': videoUrl,
-        'categoryName': categoryName,
-        'subcategoryName': subcategoryName,
-        'type': 'video_assigned'
-      },
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    // Send emails to assigned caregivers
-    for (String caregiverId in assignedCaregivers) {
-      try {
-        final docSnapshot = await firestore.collection('Users').doc(caregiverId).get();
-        if (docSnapshot.exists) {
-          final caregiverEmail = docSnapshot.data()?['email'];
-          if (caregiverEmail != null && caregiverEmail.isNotEmpty) {
-            await sendAssignedVideoEmail(
-              recipientEmail: caregiverEmail,
-              videoBody: 'You have been assigned a new video titled',
-              videoTitle: videoTitle,
-              type: 'Video'
-            );
-          }
-        }
-      } catch (e) {
-        print('Failed to send email to caregiver $caregiverId: $e');
+    try {
+      for (String userId in assignedCaregivers) {
+        await ExamService.assignExamToUser(userId: userId, examId: examID);
       }
-    }
 
-    // Close the loading dialog
-    if (!mounted) return;
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
+      Navigator.of(context).pop(); // Dismiss loading dialog
 
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Video assigned successfully!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Exam assigned successfully.")),
+      );
+
+      // Send notifications to assigned caregivers
+      await _notificationService.sendNotificationToUsers(
+        userIds: assignedCaregivers,
+        title: 'New Video Assigned',
+        body: 'A new video "$examTitle" has been assigned to you.',
+        data: {
+          'examId': examID,
+          'videoTitle': examTitle,
+          'type': 'exam_assigned'
+        },
+      );
+
+      // Send emails to assigned caregivers
+      for (String userId in assignedCaregivers) {
+        try {
+          final docSnapshot = await firestore.collection('Users').doc(userId).get();
+          if (docSnapshot.exists) {
+            final caregiverEmail = docSnapshot.data()?['email'];
+            if (caregiverEmail != null && caregiverEmail.isNotEmpty) {
+              await sendAssignedVideoEmail(
+                recipientEmail: caregiverEmail,
+                videoBody: 'You have been assigned a new exam titled',
+                videoTitle: examTitle,
+                type: 'Exam'
+              );
+            }
+          }
+        } catch (e) {
+          print('Failed to send email to caregiver $userId: $e');
+        }
+      }
+
+      setState(() {
+        assignedCaregivers.clear();
+      });
+
+      Navigator.pop(context); // Optionally close screen
+    } catch (e) {
+      Navigator.of(context).pop(); // Dismiss loading dialog on error
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error assigning exam: $e")),
+      );
+    }
   }
 
   void _bottomSheet() {
@@ -254,11 +208,11 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
                                 profileImageUrl: filteredCaregivers[index]['profile_image_url'],
                                 onTap: () {
                                   Navigator.pushNamed(
-                                    context,
-                                    AppRoutes.assignedVideoScreen,
-                                    arguments: {
-                                      'userID': filteredCaregivers[index]['uid']
-                                    }
+                                      context,
+                                      AppRoutes.assignedVideoScreen,
+                                      arguments: {
+                                        'userID': filteredCaregivers[index]['uid']
+                                      }
                                   );
                                 },
                                 trailing: ElevatedButton(
@@ -304,11 +258,8 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
   Widget build(BuildContext context) {
 
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
-    final videoId = args['videoId'] ?? '';
-    final videoTitle = args['videoTitle'] ?? '';
-    final videoLink = args['videoLink'] ?? '';
-    final categoryName = args['categoryName'] ?? '';
-    final subcategoryName = args['subcategoryName'] ?? '';
+    final examTitle = args['examTitle'] ?? '';
+    final id = args['id'] ?? '';
 
     return Scaffold(
       backgroundColor: AppUtils.getColorScheme(context).surface,
@@ -316,7 +267,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            const SettingsAppBar(title: 'Assign Video'),
+            const SettingsAppBar(title: 'Assign Exam'),
             SliverToBoxAdapter(
               child: Center(
                 child: SizedBox(
@@ -333,28 +284,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
 
                         // Video Title
                         Text(
-                          'Video Title',
-                          style: TextStyle(color: AppUtils.getColorScheme(context).onSurface, fontWeight: FontWeight.bold)
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppUtils.getColorScheme(context).secondary,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Text(
-                            videoTitle,
-                            style: TextStyle(color: AppUtils.getColorScheme(context).onSurface)
-                          ),
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Paste Link
-                        Text(
-                            'Youtube Video ID',
+                            'Exam ID',
                             style: TextStyle(color: AppUtils.getColorScheme(context).onSurface, fontWeight: FontWeight.bold)
                         ),
                         const SizedBox(height: 4),
@@ -366,7 +296,28 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: Text(
-                              videoLink,
+                              id,
+                              style: TextStyle(color: AppUtils.getColorScheme(context).onSurface)
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // Paste Link
+                        Text(
+                            'Exam Title',
+                            style: TextStyle(color: AppUtils.getColorScheme(context).onSurface, fontWeight: FontWeight.bold)
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppUtils.getColorScheme(context).secondary,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Text(
+                              examTitle,
                               style: TextStyle(color: AppUtils.getColorScheme(context).onSurface)
                           ),
                         ),
@@ -378,7 +329,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
                             _bottomSheet();
                           },
                           icon: Icons.add,
-                          text: 'Assign video to caregiver',
+                          text: 'Assign exam to caregiver',
                           buttonColor: AppUtils.getColorScheme(context).secondary,
                           textColor: AppUtils.getColorScheme(context).onSurface,
                         ),
@@ -387,13 +338,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
 
                         BasicButton(
                           onPressed: () {
-                            _assignVideoToFirestore(
-                              videoTitle,
-                              videoLink,
-                              videoId,
-                              categoryName,
-                              subcategoryName
-                            );
+                            _assignExamToFirestore(id, examTitle);
                           },
                           text: 'Assign',
                           buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,

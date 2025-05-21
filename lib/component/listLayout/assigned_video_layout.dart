@@ -3,8 +3,8 @@ import '../../utils/app_utils/AppUtils.dart';
 
 class AssignedVideoLayout extends StatelessWidget {
   final String videoTitle;
-  final String adminName;
-  final double progress;
+  final String? adminName;
+  final double? progress;
   final String date;
   final void Function() onTap;
 
@@ -36,12 +36,15 @@ class AssignedVideoLayout extends StatelessWidget {
             fontSize: 14
           )
         ),
-        subtitle: Text('Assigned by $adminName', style: TextStyle(fontSize: 10, color: AppUtils.getColorScheme(context).onSurface.withAlpha(100))),
+        subtitle: adminName != null ? Text('Assigned by $adminName', style: TextStyle(fontSize: 10, color: AppUtils.getColorScheme(context).onSurface.withAlpha(100))) : null,
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(progress == 0 ? 'Not watched yet' : '${progress.toInt()}% watched', style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).tertiaryContainer, fontSize: 14)),
-            Text('Assigned on $date', style: TextStyle(color: AppUtils.getColorScheme(context).onSurface.withAlpha(100), fontSize: 8)),
+            if (progress != null)
+              Text(progress == 0 ? 'Not watched yet' : '${progress!.toInt()}% watched', style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).tertiaryContainer, fontSize: 14)),
+
+            if (date.isNotEmpty)
+              Text('Assigned on $date', style: TextStyle(color: AppUtils.getColorScheme(context).onSurface.withAlpha(100), fontSize: 8)),
           ],
         ),
       ),

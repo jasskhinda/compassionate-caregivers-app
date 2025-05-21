@@ -2,14 +2,20 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:healthcare/presentation/auth/login/login_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/chat/chat_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/chat/create_group_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
+import 'package:healthcare/presentation/main/bottomBarScreens/exam/assign_exam_screen.dart';
+import 'package:healthcare/presentation/main/bottomBarScreens/exam/create_exam_screen.dart';
+import 'package:healthcare/presentation/main/bottomBarScreens/exam/manage_exams_screen.dart';
+import 'package:healthcare/presentation/main/bottomBarScreens/exam/caregiver/take_exam_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/home_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/library/assign_video_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/library/category/subcategory_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/library/category/subcategory_video_screen.dart';
+import 'package:healthcare/presentation/main/bottomBarScreens/library/category/vimeo_video_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/library/library_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/library/video_screen.dart';
 import 'package:healthcare/presentation/main/bottomBarScreens/notification_screen.dart';
@@ -38,7 +44,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
+    await dotenv.load(fileName: ".env");
+
     // Initialize Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -106,6 +114,11 @@ class MyApp extends StatelessWidget {
         AppRoutes.subcategoryScreen: (context) => const SubcategoryScreen(),
         AppRoutes.subcategoryVideoScreen: (context) => const SubcategoryVideoScreen(),
         AppRoutes.createGroupScreen: (context) => const CreateGroupScreen(),
+        AppRoutes.createExamScreen: (context) => const CreateExamScreen(),
+        AppRoutes.manageExamScreen: (context) => const ManageExamsScreen(),
+        AppRoutes.assignExamScreen: (context) => const AssignExamScreen(),
+        AppRoutes.takeExamScreen: (context) => const TakeExamScreen(),
+        AppRoutes.vimeoVideoScreen: (context) => const VimeoVideoScreen(),
       },
       home: const SplashScreen(),
     );

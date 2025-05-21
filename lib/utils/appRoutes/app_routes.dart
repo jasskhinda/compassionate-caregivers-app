@@ -21,6 +21,12 @@ class AppRoutes {
   static const String allCaregiverUserScreen = '/allCaregiverUser';
   static const String subcategoryScreen = '/subcategory';
   static const String subcategoryVideoScreen = '/subcategoryVideo';
-  static const String createGroupScreen = '/createGroup';
+  static const String createGroupScreen = '/createGroupScreen';
+  static const String vimeoVideoScreen = '/vimeoVideoScreen';
+  static const String createExamScreen = '/createExamScreen';
+  static const String manageExamScreen = '/manageExamScreen';
+  static const String assignExamScreen = '/assignExamScreen';
+  static const String takeExamScreen = '/takeExamScreen';
+  static const String examScreen = '/examScreen';
 
 }

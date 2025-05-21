@@ -114,7 +114,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             physics: const BouncingScrollPhysics(),
             slivers: [
               // App Bar
-              MainAppBar(title: 'Video Library'),
+              const MainAppBar(title: 'Video Library'),
 
               SliverToBoxAdapter(
                 child: Center(

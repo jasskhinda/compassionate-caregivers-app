@@ -85,7 +85,7 @@ class _AssignedVideoScreenState extends State<AssignedVideoScreen> {
             final video = videos[index];
             final videoId = video['videoId'] ?? '';
             final videoTitle = video['title'] ?? '';
-            final videoUrl = video['videoUrl'] ?? '';
+            final videoUrl = video['youtubeLink'] ?? '';
             final progress = video['progress'] ?? 0.0;
             final assignedByUid = video['assignedBy'] ?? '';
             String date = DateFormat('dd MMM yyyy').format(video['assignedDate'].toDate());
@@ -108,7 +108,7 @@ class _AssignedVideoScreenState extends State<AssignedVideoScreen> {
                     onTap: () {
                       Navigator.pushNamed(
                           context,
-                          AppRoutes.videoScreen,
+                          video.containsKey('restCaregiver') ? AppRoutes.vimeoVideoScreen : AppRoutes.videoScreen,
                           arguments: {
                             'videoId': videoId,
                             'date': date,

@@ -8,7 +8,6 @@ import '../../../component/other/input_text_fields/input_text_field.dart';
 import '../../../component/other/input_text_fields/password_text_field.dart';
 import '../../../utils/appRoutes/app_routes.dart';
 import '../../../utils/app_utils/AppUtils.dart';
-import 'dart:async';
 
 class LoginUi extends StatefulWidget {
   const LoginUi({super.key});
@@ -23,6 +22,7 @@ class _LoginUiState extends State<LoginUi> {
   late TextEditingController emailController;
   late TextEditingController passwordController;
   bool isPasswordVisible = false;
+  bool isLoading = false;
 
   String? emailErrorText;
   String? passwordErrorText;
@@ -43,20 +43,13 @@ class _LoginUiState extends State<LoginUi> {
 
   // Sign user in method
   void signUserIn() async {
-
-    // Show loading circle
-    showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (context) => const Center(child: CircularProgressIndicator())
-    );
-
-    // Set a timer to dismiss the loading dialog after 3 seconds
-    Timer? loadingTimer;
-    loadingTimer = Timer(const Duration(seconds: 3), () {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+    // showDialog(
+    //   barrierDismissible: false,
+    //   context: context,
+    //   builder: (context) => const Center(child: CircularProgressIndicator()),
+    // );
+    setState(() {
+      isLoading = true;
     });
 
     try {
@@ -68,7 +61,7 @@ class _LoginUiState extends State<LoginUi> {
       final user = userCredential.user;
       if (user == null) throw FirebaseAuthException(code: 'user-not-found');
 
-      // Check Firestore if user is disabled
+      // Check if user exists in Firestore
       final userDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -77,35 +70,39 @@ class _LoginUiState extends State<LoginUi> {
       if (!userDoc.exists) {
         await FirebaseAuth.instance.signOut();
         if (!mounted) return;
+        // Navigator.pop(context); // dismiss loading
+        setState(() {
+          isLoading = false;
+        });
         alertDialog(context, 'Your account has been disabled. Please contact support.');
         return;
       }
 
-      // 🔥 Get FCM token and update Firestore
+      // Save FCM token
       final fcmToken = await FirebaseMessaging.instance.getToken();
-
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
           .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
 
-      // Then proceed to main screen
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.mainScreen,
-              (Route<dynamic> route) => false,
-        );
-      }
-
+      if (!mounted) return;
+      // Navigator.pop(context); // dismiss loading
+      setState(() {
+        isLoading = false;
+      });
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.mainScreen,
+            (Route<dynamic> route) => false,
+      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
-      print("FirebaseAuthException Code: ${e.code}");
+      // if (Navigator.canPop(context)) {
+      //   Navigator.pop(context);
+      // }
+      setState(() {
+        isLoading = false;
+      });
 
       String errorMessage = {
         'user-not-found': 'No user found for that email.',
@@ -116,14 +113,17 @@ class _LoginUiState extends State<LoginUi> {
         'invalid-credential': 'Invalid email or password. Please try again.',
       }[e.code] ?? 'An error occurred. Please try again.';
 
+      print(e.code);
+
       alertDialog(context, errorMessage);
     } catch (e) {
       if (!mounted) return;
-
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
+      // if (Navigator.canPop(context)) {
+      //   Navigator.pop(context);
+      // }
+      setState(() {
+        isLoading = false;
+      });
       alertDialog(context, 'Something went wrong. Please try again.');
       print('Login Error: $e');
     }
@@ -207,7 +207,7 @@ class _LoginUiState extends State<LoginUi> {
         // Sign In Button
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40.0),
-          child: BasicButton(
+          child: isLoading == false ? BasicButton(
               text: 'Sign in',
               fontSize: 18,
               textColor: Colors.white,
@@ -215,7 +215,7 @@ class _LoginUiState extends State<LoginUi> {
               onPressed: () {
                 signUserIn();
               }
-          ),
+          ) : const CircularProgressIndicator(),
         )
       ],
     );

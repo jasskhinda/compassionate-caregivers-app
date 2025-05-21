@@ -36,6 +36,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   // User info
   String? _role;
+  String? _password;
 
   // Get user video details
   Future<void> _getUserInfo() async {
@@ -49,6 +50,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         var data = document.data() as Map<String, dynamic>;
         setState(() {
           _role = data['role'];
+          _password = data['password'];
         });
       } else {
         debugPrint("No such document!");
@@ -110,7 +112,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       if (originalUser != null) {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: originalUser.email!,
-          password: "Admin@124", // You need to store this securely
+          password: _password.toString(), // You need to store this securely
         );
       }
 
@@ -224,7 +226,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        items: [_role == 'Nurse' ? 'Nurse' : 'Nurse', 'Caregiver'].map((String role) {
+                        items: ['Nurse', 'Caregiver'].map((String role) {
                           return DropdownMenuItem(
                             value: role,
                             child: Text(role),

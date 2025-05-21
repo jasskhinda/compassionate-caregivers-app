@@ -76,4 +76,82 @@ class CategoryServices {
         .collection('videos')
         .snapshots();
   }
+
+  Stream<List<Map<String, dynamic>>> getAssignedVideosForCaregiver(String uid, String categoryName, String subcategoryName) {
+    final videosStream = _db
+        .collection('categories')
+        .doc(categoryName)
+        .collection('subcategories')
+        .doc(subcategoryName)
+        .collection('videos')
+        .snapshots();
+
+    return videosStream.asyncMap((snapshot) async {
+      final docs = snapshot.docs;
+
+      final assignedVideoIds = docs
+          .where((doc) =>
+      doc.data().containsKey('assignedTo') &&
+          (doc.data()['assignedTo'] as List).contains(uid))
+          .map((doc) => doc.id)
+          .toSet();
+
+      final publicVideoIds = docs
+          .where((doc) =>
+      doc.data().containsKey('isVimeo') &&
+          doc.data()['isVimeo'] == false)
+          .map((doc) => doc.id)
+          .toSet();
+
+      final allRelevantVideoIds = {...assignedVideoIds, ...publicVideoIds};
+
+      if (allRelevantVideoIds.isEmpty) return [];
+
+      final results = await Future.wait(
+        allRelevantVideoIds.map((videoId) async {
+          final originalDoc = docs.firstWhere((doc) => doc.id == videoId);
+          final originalData = originalDoc.data();
+
+          final isVimeo = originalData['isVimeo'] ?? false;
+
+          if (assignedVideoIds.contains(videoId)) {
+            final caregiverDoc = await _db
+                .collection('caregiver_videos')
+                .doc(uid)
+                .collection('videos')
+                .doc(videoId)
+                .get();
+
+            if (caregiverDoc.exists) {
+              final data = caregiverDoc.data() as Map<String, dynamic>;
+              return <String, dynamic>{
+                'videoId': videoId,
+                'title': data['title'],
+                'videoUrl': data['youtubeLink'],
+                'progress': data['progress'] ?? 0,
+                'assignedBy': data['assignedBy'],
+                'assignedTo': data['assignedTo'],
+                'assignedDate': data['assignedDate'],
+                'isVimeo': isVimeo
+              };
+            }
+          }
+
+          if (publicVideoIds.contains(videoId)) {
+            return <String, dynamic>{
+              'videoId': videoId,
+              'title': originalData['title'],
+              'videoUrl': originalData['youtubeLink'],
+              'isVimeo': isVimeo
+            };
+          }
+
+          return <String, dynamic>{};
+        }).toList(),
+      );
+
+      return results.where((video) => video.isNotEmpty).toList();
+    });
+  }
+
 }

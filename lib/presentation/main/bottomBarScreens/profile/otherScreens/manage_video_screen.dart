@@ -13,7 +13,7 @@ class ManageVideoScreen extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         slivers: [
           // App bar
-          SettingsAppBar(title: 'Manage learning content'),
+          const SettingsAppBar(title: 'Manage learning content'),
 
           // Rest ui
           SliverToBoxAdapter(
@@ -22,11 +22,11 @@ class ManageVideoScreen extends StatelessWidget {
                 width: AppUtils.getScreenSize(context).width >= 600
                     ? AppUtils.getScreenSize(context).width * 0.45
                     : double.infinity,
-                child: Column(
+                child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CaregiverList(),
-                    const SizedBox(height: 120),
+                    CaregiverList(),
+                    SizedBox(height: 120),
                   ],
                 ),
               ),

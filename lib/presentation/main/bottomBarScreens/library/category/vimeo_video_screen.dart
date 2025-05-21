@@ -1,25 +1,23 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../services/user_video_services.dart';
-import '../../../../utils/app_utils/AppUtils.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import '../../../../../services/user_video_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../utils/app_utils/AppUtils.dart';
 
-class VideoScreen extends StatefulWidget {
-  const VideoScreen({super.key});
+class VimeoVideoScreen extends StatefulWidget {
+  const VimeoVideoScreen({super.key});
 
   @override
-  State<VideoScreen> createState() => _VideoScreenState();
+  State<VimeoVideoScreen> createState() => _VimeoVideoScreenState();
 }
 
-class _VideoScreenState extends State<VideoScreen> {
-  // Instance
+class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  InAppWebViewController? _webViewController;
 
-  late YoutubePlayerController _controller;
-  bool _isPlayerReady = false;
   double watchedPercentage = 0.0;
   Timer? _progressTimer;
   Timer? _updateTimer;
@@ -30,41 +28,123 @@ class _VideoScreenState extends State<VideoScreen> {
   String? _role;
   String? _categoryName;
   String? _subCategoryName;
-
   Map<String, dynamic>? args;
 
-  // Track whether the video
-  bool isPlaying = true;
+  bool isPlaying = false;
   bool isFullScreen = false;
-  void _togglePlayPause() {
-    setState(() {
-      if (isPlaying) {
-        _controller.pauseVideo();
-      } else {
-        _controller.playVideo();
-      }
-      isPlaying = !isPlaying;
+
+  String _generateHtmlData(String videoUrl) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://player.vimeo.com/api/player.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    #vimeo-player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 1;
+    }
+
+    .block-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 90px;
+      width: 100%;
+      background-color: rgba(0, 0, 0, 0);
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .block-bottom {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      height: 80px;
+      left: 40vw;
+      background-color: rgba(0, 0, 0, 0);
+      z-index: 2;
+      pointer-events: auto;
+    }
+
+    .click-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 120px;
+      height: 120px;
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      background-color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="video-container">
+    <iframe id="vimeo-player" src="$videoUrl&title=0&byline=0&portrait=0&badge=0&playsinline=1&gesture=media" 
+      frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen>
+    </iframe>
+    <div class="block-top"></div>
+    <div class="block-bottom"></div>
+    <div class="click-overlay" onclick="simulateTap()"></div>
+  </div>
+
+  <script>
+    const iframe = document.getElementById('vimeo-player');
+    const player = new Vimeo.Player(iframe);
+
+    window.flutter_inappwebview.callHandler('vimeoReady');
+
+    player.on('timeupdate', function(data) {
+      window.flutter_inappwebview.callHandler('videoProgress', data.seconds, data.duration);
     });
+  </script>
+</body>
+</html>
+''';
   }
+
+  void _togglePlayPause() async {
+    if (_webViewController != null) {
+      final jsCode = isPlaying
+          ? "document.querySelector('video').pause();"
+          : "document.querySelector('video').play();";
+      await _webViewController!.evaluateJavascript(source: jsCode);
+      setState(() => isPlaying = !isPlaying);
+    }
+  }
+
   void _toggleFullScreen() {
-    isFullScreen = !isFullScreen;
+    setState(() => isFullScreen = !isFullScreen);
   }
-  // Future<void> rewind() async {
-  //   final currentTime = await _controller.currentTime;  // Get current time as double
-  //   final newTime = (currentTime - 10).clamp(0.0, currentTime);  // Ensure time doesn't go negative
-  //
-  //   // Seek to the new time, and make sure to start playing if it was paused
-  //   _controller.seekTo(seconds: newTime);
-  //   _controller.playVideo();  // Explicitly start playing
-  // }
-  // Future<void> forward() async {
-  //   final currentTime = await _controller.currentTime;  // Get current time as double
-  //   final newTime = currentTime + 10;  // Add 10 seconds
-  //
-  //   // Seek to the new time
-  //   _controller.seekTo(seconds: newTime);
-  //   _controller.playVideo();  // Explicitly start playing
-  // }
 
   @override
   void initState() {
@@ -83,11 +163,10 @@ class _VideoScreenState extends State<VideoScreen> {
       _categoryName = args?['categoryName'];
       _subCategoryName = args?['subcategoryName'];
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (videoUrl != null && videoUrl!.isNotEmpty) {
-          _initializePlayer();
-        }
-      });
+      // Start paused, so no auto-play on load
+      isPlaying = false;
+
+      _startTrackingProgress();
     }
   }
 
@@ -100,55 +179,33 @@ class _VideoScreenState extends State<VideoScreen> {
 
       if (document.exists) {
         var data = document.data() as Map<String, dynamic>;
-        setState(() {
-          _role = data['role'];
-        });
+        setState(() => _role = data['role']);
       }
     } catch (e) {
       debugPrint("Error fetching user role: $e");
     }
   }
 
-  void _initializePlayer() {
-    if (videoUrl == null || videoUrl!.isEmpty) return;
-
-    _controller = YoutubePlayerController(
-      params: const YoutubePlayerParams(
-        mute: false,                     // Keep sound on
-        showControls: false,             // Hides play/pause, volume, etc.
-        showFullscreenButton: false,     // Disables fullscreen button
-        showVideoAnnotations: false,     // Disables video annotations
-        pointerEvents: PointerEvents.none, // Disables all interaction
-        loop: false,                     // No loop
-        playsInline: true,               // Plays inline, not fullscreen
-        strictRelatedVideos: true,      // Reduces related videos showing after playback
-        enableJavaScript: false,         // Disables JavaScript interaction
-        enableCaption: false,            // Disables captions
-        captionLanguage: 'en',           // Set caption language (if enabled)
-      ),
-    )..loadVideoById(videoId: videoUrl!);
-
-    // Track progress every second
-    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final duration = await _controller.duration;
-      final currentPosition = await _controller.currentTime;
-
-      if (duration > 0) {
-        double percent = (currentPosition / duration) * 100;
-        watchedPercentage = percent.clamp(0, 100);
-        setState(() {});
+  void _startTrackingProgress() {
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_webViewController != null) {
+        try {
+          var durationStr = await _webViewController!.evaluateJavascript(source: "document.querySelector('video').duration.toString();");
+          var currentStr = await _webViewController!.evaluateJavascript(source: "document.querySelector('video').currentTime.toString();");
+          double duration = double.tryParse(durationStr ?? '') ?? 0;
+          double current = double.tryParse(currentStr ?? '') ?? 0;
+          if (duration > 0) {
+            double percent = (current / duration) * 100;
+            setState(() => watchedPercentage = percent.clamp(0, 100));
+          }
+        } catch (_) {}
       }
     });
 
-    // Update Firestore every 5 seconds to reduce writes
-    _updateTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _updateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_role == "Caregiver") {
         _updateProgressInFirestore(watchedPercentage);
       }
-    });
-
-    setState(() {
-      _isPlayerReady = true;
     });
   }
 
@@ -165,7 +222,6 @@ class _VideoScreenState extends State<VideoScreen> {
       final docSnapshot = await docRef.get();
       final existingProgress = docSnapshot.data()?['progress'] ?? 0.0;
 
-      // Only update if the new progress is higher
       if (percentage > existingProgress) {
         await docRef.set({
           'progress': percentage,
@@ -181,11 +237,6 @@ class _VideoScreenState extends State<VideoScreen> {
   void dispose() {
     _progressTimer?.cancel();
     _updateTimer?.cancel();
-    try {
-      _controller.close();
-    } catch (e) {
-      debugPrint('Error closing controller: $e');
-    }
     super.dispose();
   }
 
@@ -194,67 +245,42 @@ class _VideoScreenState extends State<VideoScreen> {
     final videoTitle = args?['videoTitle'] ?? 'Default Video Title';
     final date = args?['date'] ?? 'Default Date';
     final adminName = args?['adminName'] ?? '';
-    final categoryName = args?['categoryName'] ?? '';
-    final subcategoryName = args?['subcategoryName'] ?? '';
-    final videoID = args?['videoId'] ?? '';
-    final progress = args?['progress'] ?? 0.0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("YouTube Player")),
+      appBar: AppBar(title: const Text("Vimeo Player")),
       body: SingleChildScrollView(
         child: Center(
           child: SizedBox(
-            width: AppUtils.getScreenSize(context).width >= 600
-                ? isFullScreen ? double.infinity : AppUtils.getScreenSize(context).width * 0.45
-                : double.infinity,
+            width: double.infinity,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildVideoPlayer(),
-                  const SizedBox(height: 15),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // ElevatedButton(
-                      //   onPressed: rewind,
-                      //   style: ElevatedButton.styleFrom(
-                      //       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                      //       backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
-                      //   ),
-                      //   child: const Icon(Icons.replay_10, color: Colors.white),
-                      // ),
-                      // const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _togglePlayPause,
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                          backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
-                        ),
-                        child: Text(isPlaying ? 'Pause Video' : 'Play Video', style: const TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: _toggleFullScreen,
-                        style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                            backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
-                        ),
-                        child: const Text('Full Screen', style: TextStyle(fontSize: 16, color: Colors.white)),
-                      ),
-                      // const SizedBox(width: 10),
-                      // ElevatedButton(
-                      //   onPressed: forward,
-                      //   style: ElevatedButton.styleFrom(
-                      //       padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                      //       backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
-                      //   ),
-                      //   child: const Icon(Icons.forward_10_rounded, color: Colors.white),
-                      // ),
-                    ],
-                  ),
+                  _buildVideoWebView(),
+                  // const SizedBox(height: 15),
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     ElevatedButton(
+                  //       onPressed: _togglePlayPause,
+                  //       style: ElevatedButton.styleFrom(
+                  //         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+                  //         backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer,
+                  //       ),
+                  //       child: Text(isPlaying ? 'Pause Video' : 'Play Video', style: const TextStyle(fontSize: 16, color: Colors.white)),
+                  //     ),
+                  //     const SizedBox(width: 10),
+                  //     ElevatedButton(
+                  //       onPressed: _toggleFullScreen,
+                  //       style: ElevatedButton.styleFrom(
+                  //         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+                  //         backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer,
+                  //       ),
+                  //       child: const Text('Full Screen', style: TextStyle(fontSize: 16, color: Colors.white)),
+                  //     ),
+                  //   ],
+                  // ),
                   const SizedBox(height: 15),
                   _buildVideoInfo(videoTitle, adminName, date),
                   if (_role == 'Admin' && videoUrl != null && _categoryName != null && _subCategoryName != null)
@@ -272,23 +298,62 @@ class _VideoScreenState extends State<VideoScreen> {
     );
   }
 
-  Widget _buildVideoPlayer() {
+  Widget _buildVideoWebView() {
+    final vimeoUrl = videoUrl ?? '';
+
     return SizedBox(
-      height: AppUtils.getScreenSize(context).width >= 600
-          ? isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : 350
-          : isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : 250,
-      width: AppUtils.getScreenSize(context).width >= 600
-          ? isFullScreen ? double.infinity : AppUtils.getScreenSize(context).width * 0.45
-          : double.infinity,
-      child: _isPlayerReady
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: Transform.rotate(
-                  angle: AppUtils.getScreenSize(context).width <= 600 ? isFullScreen ? 90 * 3.14159 / 180 : 0 : 0,  // Rotate to 90 degrees when fullscreen
-                  child: YoutubePlayer(controller: _controller,),
-                ),
-          )
-          : const Center(child: CircularProgressIndicator()),
+      height: AppUtils.getScreenSize(context).width > 1400 ? 450 : 250,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          InAppWebView(
+            initialUrlRequest: URLRequest(url: WebUri(vimeoUrl)),
+            initialSettings: InAppWebViewSettings(
+              javaScriptEnabled: true,
+              mediaPlaybackRequiresUserGesture: false,
+              disableHorizontalScroll: true,
+              disableVerticalScroll: true,
+              supportZoom: false,
+              disableContextMenu: true,
+              transparentBackground: true,
+              useShouldOverrideUrlLoading: true,
+            ),
+            onWebViewCreated: (controller) async {
+              _webViewController = controller;
+              final htmlData = _generateHtmlData(videoUrl!);
+
+              await controller.loadData(
+                data: htmlData,
+                baseUrl: WebUri("about:blank"),
+                mimeType: 'text/html',
+                encoding: 'utf-8',
+              );
+
+              controller.addJavaScriptHandler(
+                handlerName: 'videoProgress',
+                callback: (args) {
+                  final seconds = args[0] as double;
+                  final duration = args[1] as double;
+                  if (duration > 0) {
+                    final percent = (seconds / duration) * 100;
+                    if (mounted) {
+                      setState(() {
+                        watchedPercentage = percent.clamp(0, 100);
+                      });
+                    }
+                  }
+                },
+              );
+            },
+            shouldOverrideUrlLoading: (controller, navigationAction) async {
+              return NavigationActionPolicy.CANCEL;
+            },
+            onLoadStop: (controller, url) async {
+              // No DOM manipulation needed
+            },
+          ),
+        ],
+      ),
     );
   }
 

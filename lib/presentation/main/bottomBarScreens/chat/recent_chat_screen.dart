@@ -207,7 +207,12 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
         
         String lastMessage = '';
         DateTime? lastMessageTime;
-        int unreadCount = group['unreadCount_${_auth.currentUser!.uid}'] as int? ?? 0;
+        final String fieldName = 'unreadCount_${_auth.currentUser!.uid}';
+
+        int unreadCount = (group.data() as Map<String, dynamic>?)
+            ?.containsKey(fieldName) == true
+            ? group[fieldName] as int? ?? 0
+            : 0;
 
         if (snapshot.data!.docs.isNotEmpty) {
           final lastMessageDoc = snapshot.data!.docs.first;
