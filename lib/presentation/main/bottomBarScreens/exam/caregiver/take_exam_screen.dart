@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/caregiver/exam_screen.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/caregiver/exam_screen.dart';
 import '../../../../../services/exam_services.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
@@ -83,6 +83,21 @@ class _TakeExamScreenState extends State<TakeExamScreen> {
                           final exam = exams[index];
                           return GestureDetector(
                             onTap: () async {
+                              final userId = _auth.currentUser!.uid;
+                              final existingSubmission = await FirebaseFirestore.instance
+                                  .collection('Users')
+                                  .doc(userId)
+                                  .collection('exams')
+                                  .doc(exam['id'].toString())
+                                  .get();
+
+                              if (existingSubmission.exists && existingSubmission.data()?['score'] != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('You have already submitted this exam.')),
+                                );
+                                return;
+                              }
+
                               final shouldStart = await showDialog<bool>(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -93,11 +108,11 @@ class _TakeExamScreenState extends State<TakeExamScreen> {
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
+                                      child: const Text('Cancel', style: TextStyle(color: Colors.red)),
                                     ),
                                     ElevatedButton(
                                       onPressed: () => Navigator.of(context).pop(true),
-                                      child: const Text('Start Exam'),
+                                      child: Text('Start Exam', style: TextStyle(color: Colors.green.shade700)),
                                     ),
                                   ],
                                 ),

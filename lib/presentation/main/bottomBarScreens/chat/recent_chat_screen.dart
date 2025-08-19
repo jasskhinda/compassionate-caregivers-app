@@ -1,12 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/main_app_bar.dart';
-import 'package:healthcare/component/other/input_text_fields/input_text_field.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/chat/chat_layout.dart';
-import 'package:healthcare/services/chat_services.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/main_app_bar.dart';
+import 'package:caregiver/component/other/input_text_fields/input_text_field.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/chat/chat_layout.dart';
+import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 class RecentChatScreen extends StatefulWidget {
   const RecentChatScreen({super.key});

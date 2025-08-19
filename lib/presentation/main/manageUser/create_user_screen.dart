@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 import '../../../component/other/alert_dialog.dart';
 import '../../../component/other/basic_button.dart';
@@ -89,6 +89,28 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   void signUpUser() async {
     if (!mounted) return;
 
+    // TRIMMED INPUT FIELD
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    // Validation
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      alertDialog(context, "Please fill in all fields.");
+      return;
+    }
+
+    if (password.length < 6) {
+      alertDialog(context, "Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (password != confirmPassword) {
+      alertDialog(context, "Passwords do not match.");
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => const Center(child: CircularProgressIndicator()),
@@ -122,7 +144,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         'email': emailController.text,
         'role': selectedRole,
         'name': nameController.text,
-        'password': passwordController.text,
+        'password': selectedRole == 'Admin' ? passwordController.text : null,
         'assigned_video': 0,
         'completed_video': 0,
         'mobile_number': '',
@@ -163,7 +185,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          SettingsAppBar(title: 'Add User'),
+          const SettingsAppBar(title: 'Add User'),
           SliverToBoxAdapter(
             child: Center(
               child: SizedBox(
@@ -226,7 +248,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        items: ['Nurse', 'Caregiver'].map((String role) {
+                        items: ['Nurse', 'Caregiver', _role == 'Admin' ? 'Admin' : ''].map((String role) {
                           return DropdownMenuItem(
                             value: role,
                             child: Text(role),

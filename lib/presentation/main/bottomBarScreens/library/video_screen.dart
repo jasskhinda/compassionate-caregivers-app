@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:caregiver/component/other/show_still_watching_dialog.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,9 @@ class VideoScreen extends StatefulWidget {
 class _VideoScreenState extends State<VideoScreen> {
   // Instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Timer? _stillWatchingTimer;
+  bool _hasAskedStillWatching = false;
 
   late YoutubePlayerController _controller;
   bool _isPlayerReady = false;
@@ -40,14 +44,46 @@ class _VideoScreenState extends State<VideoScreen> {
     setState(() {
       if (isPlaying) {
         _controller.pauseVideo();
+        _stillWatchingTimer?.cancel(); // Stop timer when video is paused
       } else {
         _controller.playVideo();
+        _startStillWatchingTimer(); // Start timer when play is pressed
       }
       isPlaying = !isPlaying;
     });
   }
   void _toggleFullScreen() {
     isFullScreen = !isFullScreen;
+  }
+
+  void _startStillWatchingTimer() {
+    if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
+
+    // Pick random delay between 10 to 30 seconds
+    final int delaySeconds = 10 + (DateTime.now().millisecondsSinceEpoch % 21);
+
+    _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
+      final playerState = await _controller.playerState;
+
+      if (playerState == PlayerState.playing) {
+        _controller.pauseVideo();
+        isPlaying = false;
+        setState(() {}); // Update play/pause button UI
+
+        final result = await showStillWatchingDialog(context);
+        if (result == true) {
+          _controller.playVideo();
+          isPlaying = true;
+        } else {
+          // Explicitly keep it paused
+          isPlaying = false;
+        }
+        setState(() {});
+      }
+
+      _hasAskedStillWatching = true; // Only ask once
+      _stillWatchingTimer = null;
+    });
   }
   // Future<void> rewind() async {
   //   final currentTime = await _controller.currentTime;  // Get current time as double
@@ -110,6 +146,8 @@ class _VideoScreenState extends State<VideoScreen> {
   }
 
   void _initializePlayer() {
+    _hasAskedStillWatching = false;
+    _stillWatchingTimer?.cancel();
     if (videoUrl == null || videoUrl!.isEmpty) return;
 
     _controller = YoutubePlayerController(
@@ -127,6 +165,8 @@ class _VideoScreenState extends State<VideoScreen> {
         captionLanguage: 'en',           // Set caption language (if enabled)
       ),
     )..loadVideoById(videoId: videoUrl!);
+
+    _startStillWatchingTimer();
 
     // Track progress every second
     _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -181,6 +221,7 @@ class _VideoScreenState extends State<VideoScreen> {
   void dispose() {
     _progressTimer?.cancel();
     _updateTimer?.cancel();
+    _stillWatchingTimer?.cancel();
     try {
       _controller.close();
     } catch (e) {
@@ -370,7 +411,7 @@ class _AssignedCaregiverListState extends State<_AssignedCaregiverList> {
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
             child: Text(
-              "No caregivers assigned to this video.",
+              "No caregiver has watched this video.",
               style: TextStyle(color: Colors.grey),
             ),
           );
@@ -382,7 +423,7 @@ class _AssignedCaregiverListState extends State<_AssignedCaregiverList> {
           children: [
             const SizedBox(height: 20),
             Text(
-              'Assigned Caregivers',
+              'Video Insights',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

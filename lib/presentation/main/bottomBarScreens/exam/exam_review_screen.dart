@@ -2,7 +2,7 @@ import 'dart:io' as io;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pdf/pdf.dart';
@@ -170,23 +170,28 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
     }
 
     if (io.Platform.isAndroid) {
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Storage permission is required to save PDF')),
-        );
-        return;
-      }
+      // ✅ Scoped storage safe location
+      final downloadsDir = await getExternalStorageDirectory();
+      // This is: Android/data/<your.app.id>/files/
+      final file = io.File('${downloadsDir!.path}/$fileName');
+      await file.writeAsBytes(bytes);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF saved to ${file.path}')),
+      );
+
+      return; // ✅ Stop here so iOS logic won't run
     }
 
-    final dir = io.Platform.isAndroid
-        ? io.Directory('/storage/emulated/0/Download')
-        : await getApplicationDocumentsDirectory();
-
-    if (!await dir.exists()) await dir.create(recursive: true);
-
+    // ✅ iOS or others: App Documents directory
+    final dir = await getApplicationDocumentsDirectory();
     final file = io.File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('PDF saved to ${file.path}')),
+    );
+
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('PDF saved to ${file.path}')),

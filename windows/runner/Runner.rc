@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example.healthcare" "\0"
-            VALUE "FileDescription", "healthcare" "\0"
+            VALUE "CompanyName", "com.compassionate.caregiver" "\0"
+            VALUE "FileDescription", "caregiver" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "healthcare" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.example.healthcare. All rights reserved." "\0"
-            VALUE "OriginalFilename", "healthcare.exe" "\0"
-            VALUE "ProductName", "healthcare" "\0"
+            VALUE "InternalName", "caregiver" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 com.compassionate.caregiver. All rights reserved." "\0"
+            VALUE "OriginalFilename", "caregiver.exe" "\0"
+            VALUE "ProductName", "caregiver" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

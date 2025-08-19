@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/appRoutes/assets.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:provider/provider.dart';
 
 import '../../theme/theme_provider.dart';
@@ -38,11 +39,27 @@ class _NavDrawerState extends State<NavDrawer> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
               alignment: Alignment.center,
               child: Center(
-                child: Text(
-                  'Healthcare',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)
+                // child: Text(
+                //   'Healthcare',
+                //   maxLines: 1,
+                //   overflow: TextOverflow.ellipsis,
+                //   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)
+                // ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(Assets.icLauncherIcon, width: 70, height: 70),
+                    const SizedBox(height: 7),
+
+                    Text(
+                      'Compassionate\nCaregivers\n(Phil 4:6-7)',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppUtils.getColorScheme(context).onSurface,
+                        fontWeight: FontWeight.bold
+                      )
+                    )
+                  ],
                 ),
               ),
             ),

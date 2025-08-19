@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:healthcare/utils/appRoutes/assets.dart';
+import 'package:caregiver/utils/appRoutes/assets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../../component/other/input_text_fields/text_input.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
@@ -37,14 +37,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // Check edit button is clicked or not
   bool _isEditing = false;
-  bool isPasswordVisible = false;
 
   // Edit Text Controller
   late TextEditingController _usernameController = TextEditingController();
   late TextEditingController _mobileController = TextEditingController();
   late TextEditingController _dobController = TextEditingController();
   late TextEditingController _emailController = TextEditingController();
-  late TextEditingController _passwordController = TextEditingController();
 
   // Get user info
   Future<void> _getUserInfo() async {
@@ -65,7 +63,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _profileImageUrl = data['profile_image_url'];
           _usernameController.text = _name ?? '';
           _emailController.text = _auth.currentUser!.email ?? '';
-          _passwordController.text = _password ?? '';
           _mobileController.text = _mobileNumber ?? '';
           _dobController.text = _dob ?? '';
           _isLoading = false;
@@ -138,7 +135,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // 🌟 NEW: Re-authenticate user before updating sensitive info
       final user = _auth.currentUser!;
-      if (_passwordController.text.isNotEmpty && (_emailController.text.isNotEmpty || _passwordController.text.isNotEmpty)) {
+      if (_emailController.text.isNotEmpty) {
         final credential = EmailAuthProvider.credential(
           email: user.email!,
           password: _password.toString(),
@@ -155,11 +152,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SnackBar(content: Text("Verification email sent to your new email address.")),
           );
         }
-
-        // Update Password if changed
-        if (_passwordController.text.isNotEmpty) {
-          await user.updatePassword(_passwordController.text.trim());
-        }
       }
 
       await _firestore
@@ -171,7 +163,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'dob': _dobController.text.toString(),
             'profile_image_url': newImageUrl,
             if (_emailController.text.isNotEmpty) 'email': user.email!,
-            if (_passwordController.text.isNotEmpty) 'password': _passwordController.text.trim(),
       }, SetOptions(merge: true));
 
       if (!mounted) return;
@@ -200,7 +191,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _usernameController = TextEditingController();
-    _passwordController = TextEditingController();
     _mobileController = TextEditingController();
     _emailController = TextEditingController();
     _dobController = TextEditingController();
@@ -210,7 +200,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
-    _passwordController.dispose();
     _mobileController.dispose();
     _emailController.dispose();
     _dobController.dispose();
@@ -392,29 +381,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     fontWeight: FontWeight.bold,
                                     color: AppUtils.getColorScheme(context).onSurface
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              TextInput(
-                                  keyboardType: TextInputType.text,
-                                  obscureText: !isPasswordVisible,
-                                  isEnabled: _role == 'Admin' ? _isEditing ? false : true : true,
-                                  onChanged: (value) {
-                                    setState(() {});
-                                  },
-                                  controller: _passwordController,
-                                  labelText: 'Enter your password',
-                                  hintText: 'e.g. Password123',
-                                  errorText: '',
-                                  prefixIcon: Icon(Icons.lock_outline, color: AppUtils.getColorScheme(context).tertiaryContainer),
-                                  suffixIcon: IconButton(
-                                      onPressed: (){
-                                        isPasswordVisible = !isPasswordVisible;
-                                        setState(() {});
-                                      },
-                                      icon: Icon(
-                                          isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                                          color: AppUtils.getColorScheme(context).tertiaryContainer)
-                                  )
                               ),
                             ],
                           ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/presentation/main/manageUser/caregiver_list.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
 class ManageVideoScreen extends StatelessWidget {

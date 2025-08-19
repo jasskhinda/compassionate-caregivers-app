@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/component/listLayout/manage_user_layout.dart';
-import 'package:healthcare/component/other/input_text_fields/text_input.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/component/listLayout/manage_user_layout.dart';
+import 'package:caregiver/component/other/input_text_fields/text_input.dart';
 import '../../../../component/other/basic_button.dart';
 import '../../../../services/email_service.dart';
 import '../../../../services/user_services.dart';
@@ -31,6 +31,33 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+
+    Future.microtask(() async {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        final categoryName = args['categoryName'];
+        final subcategoryName = args['subcategoryName'];
+        final videoId = args['videoId'];
+
+        final doc = await FirebaseFirestore.instance
+            .collection('categories')
+            .doc(categoryName)
+            .collection('subcategories')
+            .doc(subcategoryName)
+            .collection('videos')
+            .doc(videoId)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data();
+          if (data != null && data['assignedTo'] != null) {
+            setState(() {
+              assignedCaregivers = List<String>.from(data['assignedTo']);
+            });
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -262,20 +289,16 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
                                   );
                                 },
                                 trailing: ElevatedButton(
-                                  onPressed: () {
+                                  onPressed: isAdded
+                                      ? null // disable button if already added
+                                      : () {
                                     setModalState(() {
-                                      setState(() {
-                                        if (isAdded) {
-                                          assignedCaregivers.remove(caregiverId);
-                                        } else {
-                                          assignedCaregivers.add(caregiverId);
-                                        }
-                                      });
+                                      assignedCaregivers.add(caregiverId);
                                     });
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: isAdded
-                                        ? AppUtils.getColorScheme(context).primary.withAlpha(100)
+                                        ? Colors.grey
                                         : AppUtils.getColorScheme(context).tertiaryContainer,
                                   ),
                                   child: Text(

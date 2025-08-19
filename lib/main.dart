@@ -2,37 +2,40 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:healthcare/presentation/auth/login/login_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/chat/chat_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/chat/create_group_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/assign_exam_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/create_exam_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/manage_exams_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/caregiver/take_exam_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/home_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/assign_video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/category/subcategory_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/category/subcategory_video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/category/vimeo_video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/library_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/notification_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/otherScreens/assigned_video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/otherScreens/edit_profile_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/otherScreens/manage_video_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/otherScreens/personal_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/profile_screen.dart';
-import 'package:healthcare/presentation/main/main_screen.dart';
-import 'package:healthcare/presentation/main/manageUser/all_caregiver_user_screen.dart';
-import 'package:healthcare/presentation/main/manageUser/all_nurse_user_screen.dart';
-import 'package:healthcare/presentation/main/manageUser/create_user_screen.dart';
-import 'package:healthcare/presentation/main/manageUser/manage_user_screen.dart';
-import 'package:healthcare/presentation/splash/splash_screen.dart';
-import 'package:healthcare/services/notification_service.dart';
-import 'package:healthcare/theme/theme_provider.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/presentation/auth/forgot_password.dart';
+import 'package:caregiver/presentation/auth/login/login_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/chat/chat_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/chat/create_group_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/assign_exam_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/create_exam_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/manage_exams_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/caregiver/take_exam_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/home_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/assign_video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/category/subcategory_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/category/subcategory_video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/category/vimeo_video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/library_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/notification_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/assigned_video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/change_password.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/edit_profile_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/manage_video_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/personal_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_screen.dart';
+import 'package:caregiver/presentation/main/main_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/all_caregiver_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/all_nurse_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/create_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
+import 'package:caregiver/presentation/splash/splash_screen.dart';
+import 'package:caregiver/presentation/terms/privacy_and_policy.dart';
+import 'package:caregiver/presentation/terms/terms_and_conditions_screen.dart';
+import 'package:caregiver/services/notification_service.dart';
+import 'package:caregiver/theme/theme_provider.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
@@ -45,7 +48,7 @@ void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
-    await dotenv.load(fileName: ".env");
+    // await dotenv.load(fileName: ".env");
 
     // Initialize Firebase
     await Firebase.initializeApp(
@@ -119,6 +122,10 @@ class MyApp extends StatelessWidget {
         AppRoutes.assignExamScreen: (context) => const AssignExamScreen(),
         AppRoutes.takeExamScreen: (context) => const TakeExamScreen(),
         AppRoutes.vimeoVideoScreen: (context) => const VimeoVideoScreen(),
+        AppRoutes.forgotPasswordScreen: (context) => const ForgotPassword(),
+        AppRoutes.changePasswordScreen: (context) => const ChangePassword(),
+        AppRoutes.termsAndConditionScreen: (context) => const TermsAndConditionsScreen(),
+        AppRoutes.privacyAndPolicyScreen: (context) => const PrivacyAndPolicyScreen(),
       },
       home: const SplashScreen(),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../../component/listLayout/user_layout.dart';
 import '../../../component/other/input_text_fields/text_input.dart';
 import '../../../services/user_services.dart';

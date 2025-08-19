@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:584959824727:android:1df7a71455c38ffbbaa412",
+        "mobilesdk_app_id": "1:584959824727:android:4dfdc2771e8e6ff4baa412",
         "android_client_info": {
-          "package_name": "com.example.healthcare.healthcare"
+          "package_name": "com.compassionate.caregiver"
         }
       },
       "oauth_client": [],

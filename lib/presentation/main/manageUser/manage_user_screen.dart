@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/component/other/basic_button.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/component/other/basic_button.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../../component/home/user_count_layout.dart';
 
 class ManageUserScreen extends StatefulWidget {
@@ -100,7 +100,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             // App Bar
-            SettingsAppBar(title: 'Manage & Add Users'),
+            const SettingsAppBar(title: 'Manage & Add Users'),
 
             SliverToBoxAdapter(
               child: Center(
@@ -113,11 +113,11 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(height: 10),
+                        const SizedBox(height: 10),
                         IconBasicButton(text: 'Add new users', buttonColor: AppUtils.getColorScheme(context).tertiaryContainer, textColor: Colors.white, icon: Icons.add, onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 20),
                         Text('Assigned Staff', style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -128,7 +128,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                 child: UserCountLayout(title: 'Nurse', count: nurse.toString(), icon: Icons.health_and_safety)
                               )
                             ),
-                            SizedBox(width: 15),
+                            const SizedBox(width: 15),
                             Expanded(
                               child: GestureDetector(
                                 onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen) : {},
@@ -138,7 +138,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                           ],
                         ),
                         // Add extra space at the bottom to ensure scrolling works
-                        SizedBox(height: 100),
+                        const SizedBox(height: 100),
                       ],
                     ),
                   ),

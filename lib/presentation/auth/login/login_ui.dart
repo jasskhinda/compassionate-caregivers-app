@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/other/alert_dialog.dart';
+import 'package:caregiver/component/other/alert_dialog.dart';
+import 'package:caregiver/presentation/auth/forgot_password.dart';
 import '../../../component/other/basic_button.dart';
 import '../../../component/other/input_text_fields/input_text_field.dart';
 import '../../../component/other/input_text_fields/password_text_field.dart';
@@ -192,17 +194,56 @@ class _LoginUiState extends State<LoginUi> {
             }
         ),
 
-        const SizedBox(height: 7),
+        const SizedBox(height: 4),
 
-        Center(
-          child: Text(
-              'By continuing, you agree to our Terms of Service and Privacy Policy.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppUtils.getScreenSize(context).width < 1000 ? Colors.white : AppUtils.getColorScheme(context).onSurface,)
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.forgotPasswordScreen);
+            },
+            child: Text(
+              'Forgot Password?',
+              style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer, fontWeight: FontWeight.bold)
+            )
           ),
         ),
 
-        const SizedBox(height: 50),
+        const SizedBox(height: 7),
+
+        // Center(
+        //   child: RichText(
+        //     textAlign: TextAlign.center,
+        //     text: TextSpan(
+        //       style: TextStyle(
+        //         color: AppUtils.getColorScheme(context).onSurface,
+        //       ),
+        //       children: [
+        //         const TextSpan(text: 'By continuing, you agree to our '),
+        //         TextSpan(
+        //           text: 'Terms and conditions',
+        //           style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).tertiary),
+        //           recognizer: TapGestureRecognizer()
+        //             ..onTap = () {
+        //               Navigator.pushNamed(context, AppRoutes.termsAndConditionScreen);
+        //             },
+        //         ),
+        //         const TextSpan(text: ' and '),
+        //         TextSpan(
+        //           text: 'Privacy Policy',
+        //           style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).tertiary),
+        //           recognizer: TapGestureRecognizer()
+        //             ..onTap = () {
+        //               Navigator.pushNamed(context, AppRoutes.termsAndConditionScreen);
+        //             },
+        //         ),
+        //         const TextSpan(text: '.'),
+        //       ],
+        //     ),
+        //   ),
+        // ),
+
+        const SizedBox(height: 30),
 
         // Sign In Button
         Padding(
@@ -215,7 +256,47 @@ class _LoginUiState extends State<LoginUi> {
               onPressed: () {
                 signUserIn();
               }
-          ) : const CircularProgressIndicator(),
+          ) : const Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.termsAndConditionScreen);
+              },
+              child: Text(
+                'Terms and conditions',
+                style: TextStyle(
+                  color: AppUtils.getColorScheme(context).tertiary,
+                  fontWeight: FontWeight.bold
+                )
+              ),
+            ),
+
+            GestureDetector(
+              onTap: () {
+                Navigator.pushNamed(context, AppRoutes.privacyAndPolicyScreen);
+              },
+              child: Text(
+                  'Privacy Policy',
+                  style: TextStyle(
+                      color: AppUtils.getColorScheme(context).tertiary,
+                      fontWeight: FontWeight.bold
+                  )
+              ),
+            )
+          ],
         )
       ],
     );

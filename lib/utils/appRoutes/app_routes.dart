@@ -28,5 +28,9 @@ class AppRoutes {
   static const String assignExamScreen = '/assignExamScreen';
   static const String takeExamScreen = '/takeExamScreen';
   static const String examScreen = '/examScreen';
+  static const String forgotPasswordScreen = '/forgotPasswordScreen';
+  static const String changePasswordScreen = '/changePasswordScreen';
+  static const String termsAndConditionScreen = '/termsAndConditionScreen';
+  static const String privacyAndPolicyScreen = '/privacyAndPolicyScreen';
 
 }

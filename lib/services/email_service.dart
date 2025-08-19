@@ -10,9 +10,9 @@ Future<void> sendAssignedVideoEmail({required String recipientEmail, required St
         'Content-Type': 'application/json',
       },
       body: json.encode({
-        'service_id': dotenv.env['SERVICE_ID'],
-        'template_id': dotenv.env['TEMPLATE_ID'],
-        'user_id': dotenv.env['USER_ID'],
+        'service_id': 'service_c5xsba6',  // dotenv.env['SERVICE_ID'],
+        'template_id': 'template_bc8mupd',  // dotenv.env['TEMPLATE_ID'],
+        'user_id': 'srH_HtWKuCGvEwV3w',  // dotenv.env['USER_ID'],
         'template_params': {
           'user_email': recipientEmail,
           'video_body': videoBody,

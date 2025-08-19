@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/other/name_image_layout.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
-import 'package:healthcare/utils/appRoutes/assets.dart';
+import 'package:caregiver/component/other/name_image_layout.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/appRoutes/assets.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
 class EditProfileLayout extends StatefulWidget {

@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/main_app_bar.dart';
-import 'package:healthcare/presentation/main/manageUser/caregiver_list.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/main_app_bar.dart';
+import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 import '../../../../../component/listLayout/assigned_video_layout.dart';
 import '../../../../../component/other/not_found_dialog.dart';

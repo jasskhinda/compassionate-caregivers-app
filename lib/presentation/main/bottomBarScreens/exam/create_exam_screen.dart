@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/component/other/basic_button.dart';
-import 'package:healthcare/component/other/input_text_fields/input_text_field.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/component/other/basic_button.dart';
+import 'package:caregiver/component/other/input_text_fields/input_text_field.dart';
 
 import '../../../../services/exam_services.dart';
 import '../../../../utils/app_utils/AppUtils.dart';
@@ -115,11 +115,11 @@ class _CreateExamScreenState extends State<CreateExamScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.redAccent)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Publish'),
+            child: Text('Publish', style: TextStyle(color: Colors.green.shade700)),
           ),
         ],
       ),

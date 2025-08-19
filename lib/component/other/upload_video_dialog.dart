@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import '../../services/category_services.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 class UploadVideoDialog extends StatefulWidget {
   final String categoryName;
@@ -62,7 +62,7 @@ class _UploadVideoDialogState extends State<UploadVideoDialog> {
     });
 
     try {
-      const String accessToken = '3d0f74456105a59c9acc288773ddbc70';  // Replace with your token
+      const String accessToken = 'f40be83da238cc225057b64716aae8e2';  // Replace with your token
       final Dio dio = Dio()
         ..options.headers['Authorization'] = 'Bearer $accessToken'
         ..options.headers['Accept'] = 'application/vnd.vimeo.*+json;version=3.4';

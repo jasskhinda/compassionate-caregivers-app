@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/library/library_screen.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/profile/profile_screen.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/library_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_screen.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../component/bottomBar/bottom_bar.dart';
 import '../../component/bottomBar/nav_drawer.dart';
 import 'bottomBarScreens/home_screen.dart';

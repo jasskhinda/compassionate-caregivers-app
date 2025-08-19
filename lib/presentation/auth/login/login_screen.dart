@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/presentation/auth/login/login_ui.dart';
-import 'package:healthcare/utils/appRoutes/assets.dart';
+import 'package:caregiver/presentation/auth/login/login_ui.dart';
+import 'package:caregiver/utils/appRoutes/assets.dart';
 import '../../../utils/app_utils/AppUtils.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -45,8 +45,9 @@ class MobileLogin extends StatelessWidget {
                 Center(
                   child: SizedBox(
                     width: AppUtils.getScreenSize(context).width >= 600 ? 500 : AppUtils.getScreenSize(context).width,
+                    height: AppUtils.getScreenSize(context).height * 0.75,
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 140),
+                      margin: const EdgeInsets.symmetric(horizontal: 10.0),
                       padding: const EdgeInsets.symmetric(horizontal: 10.0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(15),

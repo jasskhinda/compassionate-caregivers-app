@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:healthcare/models/message.dart';
+import 'package:caregiver/models/message.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatServices {

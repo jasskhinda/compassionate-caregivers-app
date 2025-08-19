@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:provider/provider.dart';
 import '../../../../component/appBar/main_app_bar.dart';
 import '../../../../theme/theme_provider.dart';
@@ -97,6 +97,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             )
                         ),
 
+                        // SECURITY (CHANGE PASSWORD)
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            Text('Security', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)),
+                            const SizedBox(height: 10),
+                            Container(
+                                decoration: BoxDecoration(
+                                    color: AppUtils.getColorScheme(context).secondary,
+                                    borderRadius: BorderRadius.circular(20)
+                                ),
+                                child: Column(
+                                    children: [
+                                      SettingsField(
+                                        title: 'Change Password',
+                                        leadingIcon: const Icon(Icons.lock_outline),
+                                        trailing: const Icon(Icons.navigate_next),
+                                        bottomLine: false,
+                                        onTap: () => Navigator.pushNamed(context, AppRoutes.changePasswordScreen),
+                                      )
+                                    ]
+                                )
+                            ),
+                          ],
+                        ),
+
                         // Accessibility & Advanced(for admins)
                         if (_role != 'Caregiver')
                           Column(
@@ -179,10 +207,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 color: AppUtils.getColorScheme(context).secondary,
                                 borderRadius: BorderRadius.circular(20)
                             ),
-                            child: const Column(
+                            child: Column(
                               children: [
-                                SettingsField(title: 'Terms & Services', leadingIcon: Icon(Icons.article_outlined), trailing: Icon(Icons.navigate_next)),
-                                SettingsField(title: 'Privacy Policy', leadingIcon: Icon(Icons.policy_outlined), trailing: Icon(Icons.navigate_next), bottomLine: false),
+                                SettingsField(title: 'Terms & Services', leadingIcon: const Icon(Icons.article_outlined), trailing: const Icon(Icons.navigate_next), onTap: () => Navigator.pushNamed(context, AppRoutes.termsAndConditionScreen)),
+                                SettingsField(title: 'Privacy Policy', leadingIcon: Icon(Icons.policy_outlined), trailing: Icon(Icons.navigate_next), bottomLine: false, onTap: () => Navigator.pushNamed(context, AppRoutes.privacyAndPolicyScreen)),
                               ],
                             )
                         ),

@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/services/category_services.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/services/category_services.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import '../../../../../component/other/basic_button.dart';
 import '../../../../../component/other/not_found_dialog.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
@@ -73,10 +73,10 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           BasicTextButton(
-              width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
-              text: 'Create Subcategory',
-              buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
-              textColor: Colors.white,
+            width: AppUtils.getScreenSize(context).width >= 600 ? AppUtils.getScreenSize(context).width * 0.3 : AppUtils.getScreenSize(context).width * 0.7,
+            text: 'Create Subcategory',
+            buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
+            textColor: Colors.white,
             onPressed: () async {
               await showDialog(
                 context: context,
@@ -93,7 +93,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                         Navigator.pop(context);
                         _controller.clear();
                       },
-                      child: const Text("Create"),
+                      child: Text("Create", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
                     ),
                   ],
                 ),
@@ -103,7 +103,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
 
           const SizedBox(height: 20)
         ],
-      ) : SizedBox.shrink(),
+      ) : const SizedBox.shrink(),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -117,12 +117,12 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                           ? AppUtils.getScreenSize(context).width * 0.45
                           : double.infinity,
                       child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 15),
+                          padding: const EdgeInsets.symmetric(horizontal: 15),
                           child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                SizedBox(height: 10),
+                                const SizedBox(height: 10),
 
                                 // if (_isLoading)
                                 //   const Center(child: CircularProgressIndicator()),
@@ -143,14 +143,23 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
 
   Widget _subcategoryList(String categoryName) {
     return StreamBuilder<QuerySnapshot>(
-      stream: firestore.getSubcategories(categoryName),
+      stream: FirebaseFirestore.instance
+          .collection('categories')
+          .doc(categoryName)
+          .collection('subcategories')
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(child: NotFoundDialog(title: 'No Sub Categories Found', description: 'Try adding some categories to get started!'),);
+          return const Center(
+            child: NotFoundDialog(
+              title: 'No Sub Categories Found',
+              description: 'Try adding some categories to get started!',
+            ),
+          );
         }
 
         final subcategories = snapshot.data!.docs;
@@ -160,19 +169,94 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
           physics: const NeverScrollableScrollPhysics(),
           itemCount: subcategories.length,
           itemBuilder: (context, index) {
-            final subcategory = subcategories[index].id;
+            final subcategoryDoc = subcategories[index];
+            final subcategoryName = subcategoryDoc.id;
+
             return Padding(
               padding: const EdgeInsets.only(top: 8),
               child: ListTile(
-                contentPadding: EdgeInsets.all(10),
+                contentPadding: const EdgeInsets.all(10),
                 tileColor: AppUtils.getColorScheme(context).secondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(width: 10),
-                    Text(subcategory),
-                  ],
+                title: Text(subcategoryName),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    final videoCollectionRef = FirebaseFirestore.instance
+                        .collection('categories')
+                        .doc(categoryName)
+                        .collection('subcategories')
+                        .doc(subcategoryName)
+                        .collection('videos');
+
+                    final videoDocs = await videoCollectionRef.get();
+
+                    if (videoDocs.docs.isNotEmpty) {
+                      // Show warning dialog
+                      if (!context.mounted) return;
+                      await showDialog(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Cannot Delete'),
+                          content: const Text(
+                            'Please delete all the videos associated with this category first.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Confirm delete
+                    if (!context.mounted) return;
+
+                    final confirmDelete = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) => AlertDialog(
+                        title: const Text('Confirm Deletion'),
+                        content: Text('Are you sure you want to delete "$subcategoryName"?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmDelete == true) {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('categories')
+                            .doc(categoryName)
+                            .collection('subcategories')
+                            .doc(subcategoryName)
+                            .delete();
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('$subcategoryName deleted successfully')),
+                        );
+                      } catch (e) {
+                        print('Error deleting subcategory: $e');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to delete $subcategoryName')),
+                        );
+                      }
+                    }
+                  },
                 ),
                 onTap: () {
                   Navigator.pushNamed(
@@ -180,8 +264,8 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                     AppRoutes.subcategoryVideoScreen,
                     arguments: {
                       'categoryName': categoryName,
-                      'subcategoryName': subcategory,
-                    }
+                      'subcategoryName': subcategoryName,
+                    },
                   );
                 },
               ),

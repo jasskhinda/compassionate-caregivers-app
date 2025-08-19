@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:caregiver/component/other/show_still_watching_dialog.dart';
 import '../../../../../services/user_video_services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
@@ -17,6 +18,9 @@ class VimeoVideoScreen extends StatefulWidget {
 class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   InAppWebViewController? _webViewController;
+
+  Timer? _stillWatchingTimer;
+  bool _hasAskedStillWatching = false;
 
   double watchedPercentage = 0.0;
   Timer? _progressTimer;
@@ -132,24 +136,38 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 ''';
   }
 
-  void _togglePlayPause() async {
-    if (_webViewController != null) {
-      final jsCode = isPlaying
-          ? "document.querySelector('video').pause();"
-          : "document.querySelector('video').play();";
-      await _webViewController!.evaluateJavascript(source: jsCode);
-      setState(() => isPlaying = !isPlaying);
-    }
-  }
+  void _startStillWatchingTimer() {
+    if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
 
-  void _toggleFullScreen() {
-    setState(() => isFullScreen = !isFullScreen);
+    final delaySeconds = 10 + (DateTime.now().millisecondsSinceEpoch % 21); // 10-30 sec random
+
+    _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
+      if (!mounted) return;
+
+      _hasAskedStillWatching = true;
+      _stillWatchingTimer = null;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+
+        // Pause Vimeo video by sending postMessage to iframe
+        const jsCode = "document.querySelector('video').pause();";
+        await _webViewController!.evaluateJavascript(source: jsCode);
+        setState(() => isPlaying = !isPlaying);
+
+        final result = await showStillWatchingDialog(context);
+
+        // No auto play or pause on dialog buttons
+        debugPrint("Still watching dialog closed with result: $result");
+      });
+    });
   }
 
   @override
   void initState() {
     super.initState();
     _getUserInfo();
+    _startStillWatchingTimer();
   }
 
   @override
@@ -258,29 +276,6 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildVideoWebView(),
-                  // const SizedBox(height: 15),
-                  // Row(
-                  //   mainAxisAlignment: MainAxisAlignment.center,
-                  //   children: [
-                  //     ElevatedButton(
-                  //       onPressed: _togglePlayPause,
-                  //       style: ElevatedButton.styleFrom(
-                  //         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                  //         backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer,
-                  //       ),
-                  //       child: Text(isPlaying ? 'Pause Video' : 'Play Video', style: const TextStyle(fontSize: 16, color: Colors.white)),
-                  //     ),
-                  //     const SizedBox(width: 10),
-                  //     ElevatedButton(
-                  //       onPressed: _toggleFullScreen,
-                  //       style: ElevatedButton.styleFrom(
-                  //         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                  //         backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer,
-                  //       ),
-                  //       child: const Text('Full Screen', style: TextStyle(fontSize: 16, color: Colors.white)),
-                  //     ),
-                  //   ],
-                  // ),
                   const SizedBox(height: 15),
                   _buildVideoInfo(videoTitle, adminName, date),
                   if (_role == 'Admin' && videoUrl != null && _categoryName != null && _subCategoryName != null)
@@ -341,6 +336,33 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                         watchedPercentage = percent.clamp(0, 100);
                       });
                     }
+                  }
+                },
+              );
+
+              controller.addJavaScriptHandler(
+                handlerName: 'checkPaused',
+                callback: (args) async {
+                  final isPaused = args.first == true;
+
+                  if (!isPaused) {
+                    // Pause the video
+                    await controller.evaluateJavascript(source: "player.pause();");
+                    setState(() => isPlaying = false);
+
+                    // Show the dialog
+                    final result = await showStillWatchingDialog(context);
+
+                    if (result == true) {
+                      await controller.evaluateJavascript(source: "player.play();");
+                      setState(() => isPlaying = true);
+                    }
+
+                    _hasAskedStillWatching = true;
+                    _stillWatchingTimer = null;
+                  } else {
+                    // Video already paused — skip dialog
+                    _stillWatchingTimer = null;
                   }
                 },
               );

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/component/other/basic_button.dart';
-import 'package:healthcare/presentation/main/bottomBarScreens/exam/exam_detail_screen.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/component/other/basic_button.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/exam/exam_detail_screen.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 import '../../../../services/exam_services.dart';
 import '../../../../utils/appRoutes/app_routes.dart';

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:intl/intl.dart';
 import '../../../../../component/listLayout/assigned_video_layout.dart';
 import '../../../../../component/other/not_found_dialog.dart';

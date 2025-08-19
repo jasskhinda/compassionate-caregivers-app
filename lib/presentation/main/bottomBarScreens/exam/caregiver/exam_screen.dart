@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/other/basic_button.dart';
+import 'package:caregiver/component/other/basic_button.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
 class ExamScreen extends StatefulWidget {
@@ -192,21 +192,40 @@ class _ExamScreenState extends State<ExamScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Exam Submitted"),
-        content: Text(
-          "You answered $correctAnswersCount out of $totalQuestions correctly.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close the dialog
-              Navigator.pop(context); // Navigate back from the current screen
-            },
-            child: const Text("Close"),
+      builder: (context) {
+        int percentage = ((correctAnswersCount / totalQuestions) * 100).round();
+        String feedbackMessage;
+
+        if (percentage < 50) {
+          feedbackMessage = "😟 Don't worry, our nurse will teach you!";
+        } else if (percentage < 80) {
+          feedbackMessage = "😊 Good job! Keep practicing.";
+        } else {
+          feedbackMessage = "🎉 Excellent! You're ready to assist!";
+        }
+
+        return AlertDialog(
+          title: const Text("Exam Submitted"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("You scored $percentage%", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Text(feedbackMessage),
+            ],
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context); // Navigate back from the current screen
+              },
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
     );
   }
 

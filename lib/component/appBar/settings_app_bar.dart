@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 class SettingsAppBar extends StatelessWidget {
   final String title;

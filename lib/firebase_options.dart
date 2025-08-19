@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'cc-caregiver-app.firebasestorage.app',
     measurementId: 'G-RDZVXFVTPR',
   );
+
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import '../../utils/app_utils/AppUtils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

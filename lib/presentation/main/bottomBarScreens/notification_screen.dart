@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/component/appBar/settings_app_bar.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/component/appBar/settings_app_bar.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:intl/intl.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -231,23 +231,23 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               : AppUtils.getColorScheme(context).onSurface,
                         ),
                       ),
-                      if (data?['type'] == 'video_assigned') ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppUtils.getColorScheme(context).primary.withAlpha(25),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'Tap to view video',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppUtils.getColorScheme(context).primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                      // if (data?['type'] == 'video_assigned') ...[
+                      //   const SizedBox(height: 8),
+                      //   Container(
+                      //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      //     decoration: BoxDecoration(
+                      //       color: AppUtils.getColorScheme(context).primary.withAlpha(25),
+                      //       borderRadius: BorderRadius.circular(4),
+                      //     ),
+                      //     child: Text(
+                      //       'Tap to view video',
+                      //       style: TextStyle(
+                      //         fontSize: 12,
+                      //         color: AppUtils.getColorScheme(context).primary,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ],
                     ],
                   ),
                 ),

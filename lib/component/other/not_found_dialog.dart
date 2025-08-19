@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/appRoutes/assets.dart';
+import 'package:caregiver/utils/appRoutes/assets.dart';
 
 class NotFoundDialog extends StatelessWidget {
   final String title;

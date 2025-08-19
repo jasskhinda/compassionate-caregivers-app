@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:healthcare/component/other/basic_button.dart';
-import 'package:healthcare/component/other/not_found_dialog.dart';
-import 'package:healthcare/services/category_services.dart';
-import 'package:healthcare/utils/appRoutes/app_routes.dart';
+import 'package:caregiver/component/other/basic_button.dart';
+import 'package:caregiver/component/other/not_found_dialog.dart';
+import 'package:caregiver/services/category_services.dart';
+import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import '../../../../component/appBar/main_app_bar.dart';
 import '../../../../utils/app_utils/AppUtils.dart';
 import 'package:provider/provider.dart';
@@ -100,7 +100,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             Navigator.pop(context);
                             _controller.clear();
                           },
-                          child: const Text("Create"),
+                          child: Text("Create", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
                         ),
                       ],
                     ),
@@ -128,7 +128,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
                           if (_isLoading)
                             const Center(child: CircularProgressIndicator()),
@@ -159,7 +159,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
-            child: NotFoundDialog(title: 'No Categories Found', description: 'Try adding some categories to get started!'),
+            child: NotFoundDialog(
+              title: 'No Categories Found',
+              description: 'Try adding some categories to get started!',
+            ),
           );
         }
 
@@ -170,30 +173,103 @@ class _LibraryScreenState extends State<LibraryScreen> {
           physics: const NeverScrollableScrollPhysics(),
           itemCount: categories.length,
           itemBuilder: (context, index) {
-            final category = categories[index].id;
+            final categoryDoc = categories[index];
+            final categoryName = categoryDoc.id;
+
             return Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: ListTile(
-                contentPadding: EdgeInsets.all(10),
+                contentPadding: const EdgeInsets.all(10),
                 tileColor: AppUtils.getColorScheme(context).secondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(width: 10),
-                    Text(category),
-                  ],
+                title: Text(categoryName),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    final subcategoriesRef = FirebaseFirestore.instance
+                        .collection('categories')
+                        .doc(categoryName)
+                        .collection('subcategories');
+
+                    final subcategoryDocs = await subcategoriesRef.get();
+
+                    if (subcategoryDocs.docs.isNotEmpty) {
+                      if (!context.mounted) return;
+                      await showDialog(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Cannot Delete'),
+                          content: const Text(
+                            'Please delete all the subcategories under this category first.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Confirm delete
+                    if (!context.mounted) return;
+
+                    final confirmDelete = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) => AlertDialog(
+                        title: const Text('Confirm Deletion'),
+                        content: Text('Are you sure you want to delete "$categoryName"?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmDelete == true) {
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('categories')
+                            .doc(categoryName)
+                            .delete();
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$categoryName deleted successfully')),
+                          );
+                        }
+                      } catch (e) {
+                        print('Error deleting category: $e');
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to delete $categoryName')),
+                          );
+                        }
+                      }
+                    }
+                  },
                 ),
                 onTap: () {
                   Navigator.pushNamed(
-                      context,
-                      AppRoutes.subcategoryScreen,
-                      arguments: {
-                        'category' : category
-                      }
+                    context,
+                    AppRoutes.subcategoryScreen,
+                    arguments: {
+                      'category': categoryName,
+                    },
                   );
                 },
-                trailing: Icon(Icons.arrow_forward_ios, color: AppUtils.getColorScheme(context).onSurface),
               ),
             );
           },

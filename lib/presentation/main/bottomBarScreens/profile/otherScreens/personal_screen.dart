@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:healthcare/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../../../../component/appBar/settings_app_bar.dart';
 
 class PersonalInfo extends StatefulWidget {

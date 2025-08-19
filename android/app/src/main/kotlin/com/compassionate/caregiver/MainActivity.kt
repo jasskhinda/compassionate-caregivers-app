@@ -1,4 +1,4 @@
-package com.example.healthcare.healthcare
+package com.compassionate.caregiver
 
 import io.flutter.embedding.android.FlutterActivity
 
