@@ -53,14 +53,36 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     
+    // Check current domain
+    console.log('Current domain:', window.location.hostname);
+    console.log('Current URL:', window.location.href);
+    
     // Set authentication persistence for web
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
       .then(() => {
-        console.log('Firebase Auth persistence set to LOCAL');
+        console.log('✅ Firebase Auth persistence set to LOCAL');
+        console.log('✅ Domain:', window.location.hostname);
       })
       .catch((error) => {
-        console.error('Error setting Firebase Auth persistence:', error);
+        console.error('❌ Error setting Firebase Auth persistence:', error);
+        if (error.code === 'auth/unauthorized-domain') {
+          console.error('❌ DOMAIN ERROR: This domain needs to be added to Firebase Auth authorized domains');
+          console.error('❌ Add this domain to Firebase Console: Authentication → Settings → Authorized domains');
+          console.error('❌ Domain to add:', window.location.hostname);
+        }
       });
+      
+    // Monitor auth state changes
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        console.log('✅ User logged in:', user.email);
+        console.log('✅ User verified:', user.emailVerified);
+        console.log('✅ User UID:', user.uid);
+        console.log('✅ Last sign in:', user.metadata.lastSignInTime);
+      } else {
+        console.log('❌ User logged out or not authenticated');
+      }
+    });
   </script>
 </head>
 <body>

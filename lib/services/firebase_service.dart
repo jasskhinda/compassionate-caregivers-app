@@ -9,19 +9,25 @@ class FirebaseService {
   // Initialize Firestore settings for web
   static Future<void> initializeFirestore() async {
     try {
+      debugPrint('🔄 FirebaseService: Initializing Firestore...');
       if (kIsWeb) {
+        debugPrint('🌐 FirebaseService: Web platform detected');
+        
         // Enable network for web
         await _firestore.enableNetwork();
+        debugPrint('✅ FirebaseService: Network enabled');
         
         // Set cache size for better performance
         _firestore.settings = const Settings(
           persistenceEnabled: true,
           cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
         );
+        debugPrint('✅ FirebaseService: Cache settings applied');
       }
-      debugPrint('Firestore initialized successfully');
+      debugPrint('✅ FirebaseService: Firestore initialized successfully');
     } catch (e) {
-      debugPrint('Error initializing Firestore: $e');
+      debugPrint('❌ FirebaseService: Error initializing Firestore: $e');
+      debugPrint('❌ FirebaseService: Error type: ${e.runtimeType}');
     }
   }
 
@@ -76,10 +82,12 @@ class FirebaseService {
   static bool isUserAuthenticated() {
     final user = _auth.currentUser;
     if (user != null) {
-      debugPrint('User is authenticated: ${user.email}');
+      debugPrint('✅ FirebaseService: User is authenticated: ${user.email}');
+      debugPrint('🔐 FirebaseService: User UID: ${user.uid}');
+      debugPrint('📧 FirebaseService: Email verified: ${user.emailVerified}');
       return true;
     } else {
-      debugPrint('User is not authenticated');
+      debugPrint('❌ FirebaseService: User is not authenticated');
       return false;
     }
   }

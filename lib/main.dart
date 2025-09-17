@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:caregiver/services/auth_debug_service.dart';
 import 'package:caregiver/presentation/auth/forgot_password.dart';
 import 'package:caregiver/presentation/auth/login/login_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/chat/chat_screen.dart';
@@ -80,6 +81,15 @@ void main() async {
     
     // Test Firestore connection
     await FirebaseService.testConnection();
+    
+    // Start authentication debugging for web
+    if (kIsWeb) {
+      AuthDebugService.startDebugging();
+      // Run initial auth test after a brief delay
+      Future.delayed(const Duration(seconds: 2), () {
+        AuthDebugService.testAuthentication();
+      });
+    }
     
   } catch (e) {
     debugPrint('Error in main initialization: $e');

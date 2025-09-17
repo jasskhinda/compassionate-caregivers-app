@@ -23,20 +23,53 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _initializeAuth() async {
     try {
+      debugPrint('🔄 AuthWrapper: Starting authentication initialization...');
+      debugPrint('🌐 AuthWrapper: Current URL: ${Uri.base.toString()}');
+      
       // Wait for Firebase Auth to initialize
       await FirebaseAuth.instance.authStateChanges().first;
+      debugPrint('✅ AuthWrapper: Firebase Auth state received');
       
       // Set persistence for web
       if (kIsWeb) {
+        debugPrint('🌐 AuthWrapper: Setting web persistence to LOCAL...');
         await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+        debugPrint('✅ AuthWrapper: Web persistence set successfully');
+        
+        // Additional debugging for web
+        debugPrint('🔍 AuthWrapper: Checking localStorage availability...');
+        
+        // Additional web-specific checks
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          debugPrint('👤 AuthWrapper: Current user found: ${currentUser.email}');
+          debugPrint('📧 AuthWrapper: User email verified: ${currentUser.emailVerified}');
+          debugPrint('🔐 AuthWrapper: User UID: ${currentUser.uid}');
+          debugPrint('🕒 AuthWrapper: User created: ${currentUser.metadata.creationTime}');
+          debugPrint('🕒 AuthWrapper: Last sign in: ${currentUser.metadata.lastSignInTime}');
+        } else {
+          debugPrint('❌ AuthWrapper: No current user found');
+        }
       }
       
       setState(() {
         _user = FirebaseAuth.instance.currentUser;
         _isInitialized = true;
       });
+      debugPrint('🎉 AuthWrapper: Initialization completed successfully');
     } catch (e) {
-      debugPrint('Error initializing auth: $e');
+      debugPrint('❌ AuthWrapper: Error initializing auth: $e');
+      debugPrint('❌ AuthWrapper: Error type: ${e.runtimeType}');
+      
+      // Check for specific error types
+      if (e.toString().contains('auth/unauthorized-domain')) {
+        debugPrint('🚨 DOMAIN ERROR: ccapp.compassionatecaregivershc.com needs to be added to Firebase Auth authorized domains');
+      } else if (e.toString().contains('network')) {
+        debugPrint('🌐 NETWORK ERROR: Check internet connection and Firebase configuration');
+      } else if (e.toString().contains('persistence')) {
+        debugPrint('💾 PERSISTENCE ERROR: Local storage may be disabled or unavailable');
+      }
+      
       setState(() {
         _isInitialized = true;
       });
@@ -56,8 +89,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        debugPrint('🔄 AuthWrapper StreamBuilder: Connection state: ${snapshot.connectionState}');
+        debugPrint('🔄 AuthWrapper StreamBuilder: Has data: ${snapshot.hasData}');
+        debugPrint('🔄 AuthWrapper StreamBuilder: Data: ${snapshot.data?.email ?? 'null'}');
+        
         // Connection state check
         if (snapshot.connectionState == ConnectionState.waiting) {
+          debugPrint('⏳ AuthWrapper: Waiting for auth state...');
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
@@ -67,16 +105,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
         // Error handling
         if (snapshot.hasError) {
-          debugPrint('Auth stream error: ${snapshot.error}');
+          debugPrint('❌ AuthWrapper: Auth stream error: ${snapshot.error}');
+          debugPrint('❌ AuthWrapper: Error type: ${snapshot.error.runtimeType}');
           return const LoginScreen();
         }
 
         // User is logged in
         if (snapshot.hasData && snapshot.data != null) {
+          final user = snapshot.data!;
+          debugPrint('✅ AuthWrapper: User authenticated - redirecting to MainScreen');
+          debugPrint('👤 AuthWrapper: User email: ${user.email}');
+          debugPrint('🔐 AuthWrapper: User UID: ${user.uid}');
           return const MainScreen();
         }
 
         // User is not logged in
+        debugPrint('🔓 AuthWrapper: No user authenticated - redirecting to LoginScreen');
         return const LoginScreen();
       },
     );
