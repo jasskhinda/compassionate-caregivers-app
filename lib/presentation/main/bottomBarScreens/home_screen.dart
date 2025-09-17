@@ -8,6 +8,7 @@ import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/component/other/not_found_dialog.dart';
 import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
 import 'package:caregiver/services/user_video_services.dart';
+import 'package:caregiver/services/firebase_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 
@@ -43,62 +44,80 @@ class _HomeScreenState extends State<HomeScreen> {
   // Get all user count
   Future<void> _getUserCount() async {
     try {
-      DocumentSnapshot document = await FirebaseFirestore.instance
-          .collection('users_count')
-          .doc('Ki8jsRs1u9Mk05F0g1UL')
-          .get();
+      final data = await FirebaseService.retryOperation(
+        () => FirebaseService.getUsersCount(),
+      );
 
-      if (document.exists) {
-        var data = document.data() as Map<String, dynamic>;
+      if (data != null) {
         setState(() {
-          _nurse = data['nurse'];
-          _caregiver = data['caregiver'];
+          _nurse = data['nurse'] ?? 0;
+          _caregiver = data['caregiver'] ?? 0;
           _isLoading = false;
         });
+        debugPrint('User count loaded: nurse=$_nurse, caregiver=$_caregiver');
       } else {
         setState(() {
+          _nurse = 0;
+          _caregiver = 0;
           _isLoading = false;
         });
-        debugPrint("No such document!");
+        debugPrint('Failed to load user count, using default values');
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
+        _nurse = 0;
+        _caregiver = 0;
         _isLoading = false;
       });
-      debugPrint("Error fetching document: $e");
+      debugPrint("Error fetching user count: $e");
     }
   }
 
   // Get user video details
   Future<void> _getUserInfo() async {
     try {
-      DocumentSnapshot document = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(_auth.currentUser!.uid.toString())
-          .get();
+      if (!FirebaseService.isUserAuthenticated()) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
 
-      if (document.exists) {
+      final document = await FirebaseService.retryOperation(
+        () => FirebaseService.getUserDocument(_auth.currentUser!.uid),
+      );
+
+      if (document != null && document.exists) {
         var data = document.data() as Map<String, dynamic>;
         setState(() {
-          _role = data['role'];
-          _username = data['name'];
-          _assignedVideo = data['assigned_video'];
-          _completedVideo = data['completed_video'];
+          _role = data['role'] ?? 'Caregiver';
+          _username = data['name'] ?? 'User';
+          _assignedVideo = data['assigned_video'] ?? 0;
+          _completedVideo = data['completed_video'] ?? 0;
           _isLoading = false;
         });
+        debugPrint('User info loaded: role=$_role, username=$_username');
       } else {
         setState(() {
+          _role = 'Caregiver';
+          _username = 'User';
+          _assignedVideo = 0;
+          _completedVideo = 0;
           _isLoading = false;
         });
-        debugPrint("No such document!");
+        debugPrint("User document not found, using default values");
       }
     } catch (e) {
       if(!mounted) return;
       setState(() {
+        _role = 'Caregiver';
+        _username = 'User';
+        _assignedVideo = 0;
+        _completedVideo = 0;
         _isLoading = false;
       });
-      debugPrint("Error fetching document: $e");
+      debugPrint("Error fetching user info: $e");
     }
   }
 

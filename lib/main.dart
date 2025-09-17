@@ -34,6 +34,7 @@ import 'package:caregiver/presentation/splash/splash_screen.dart';
 import 'package:caregiver/presentation/terms/privacy_and_policy.dart';
 import 'package:caregiver/presentation/terms/terms_and_conditions_screen.dart';
 import 'package:caregiver/services/notification_service.dart';
+import 'package:caregiver/services/firebase_service.dart';
 import 'package:caregiver/theme/theme_provider.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:provider/provider.dart';
@@ -56,6 +57,9 @@ void main() async {
     );
     debugPrint('Firebase initialized successfully');
     
+    // Initialize Firestore settings
+    await FirebaseService.initializeFirestore();
+    
     // Set the background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     
@@ -73,6 +77,10 @@ void main() async {
     } else {
       debugPrint('Skipping FCM initialization on web platform');
     }
+    
+    // Test Firestore connection
+    await FirebaseService.testConnection();
+    
   } catch (e) {
     debugPrint('Error in main initialization: $e');
   }
