@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Compassionate Caregivers">
+  <link rel="apple-touch-icon" href="assets/images/ic_launcher.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/images/ic_launcher.png"/>
+
+  <title>Compassionate Caregivers</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Firebase Configuration -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-messaging-compat.js"></script>
+  <script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAVIG1ZUNcrwfpW3UoOaI24CKgjGmmBhUs",
+      authDomain: "cc-caregiver-app.firebaseapp.com",
+      projectId: "cc-caregiver-app",
+      storageBucket: "cc-caregiver-app.firebasestorage.app",
+      messagingSenderId: "584959824727",
+      appId: "1:584959824727:web:0b1f826d5a309052baa412",
+      measurementId: "G-C8C579KZZ4"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    
+    // Check current domain
+    console.log('Current domain:', window.location.hostname);
+    console.log('Current URL:', window.location.href);
+    
+    // Set authentication persistence for web
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => {
+        console.log('✅ Firebase Auth persistence set to LOCAL');
+        console.log('✅ Domain:', window.location.hostname);
+      })
+      .catch((error) => {
+        console.error('❌ Error setting Firebase Auth persistence:', error);
+        if (error.code === 'auth/unauthorized-domain') {
+          console.error('❌ DOMAIN ERROR: This domain needs to be added to Firebase Auth authorized domains');
+          console.error('❌ Add this domain to Firebase Console: Authentication → Settings → Authorized domains');
+          console.error('❌ Domain to add:', window.location.hostname);
+        }
+      });
+      
+    // Monitor auth state changes
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        console.log('✅ User logged in:', user.email);
+        console.log('✅ User verified:', user.emailVerified);
+        console.log('✅ User UID:', user.uid);
+        console.log('✅ Last sign in:', user.metadata.lastSignInTime);
+      } else {
+        console.log('❌ User logged out or not authenticated');
+      }
+    });
+  </script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
