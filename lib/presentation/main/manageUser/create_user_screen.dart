@@ -117,44 +117,72 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
 
     try {
-      // Store current user before creating new one
+      // Store current user credentials before creating new one
       User? originalUser = FirebaseAuth.instance.currentUser;
+      String? originalEmail = originalUser?.email;
 
+      // Get the current user's credential to re-authenticate later
+      AuthCredential? credential;
+      if (originalUser != null && _password != null) {
+        credential = EmailAuthProvider.credential(
+          email: originalEmail!,
+          password: _password!,
+        );
+      }
+
+      // Create new user
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: emailController.text,
-        password: passwordController.text,
+        email: email,
+        password: password,
       );
 
       String newUserId = userCredential.user!.uid;
 
-      // Sign out the newly created user
-      await FirebaseAuth.instance.signOut();
-
-      // Re-authenticate the original user (if exists)
-      if (originalUser != null) {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: originalUser.email!,
-          password: _password.toString(), // You need to store this securely
-        );
-      }
-
-      // Save user info
-      _firestore.collection("Users").doc(userCredential.user!.uid).set({
+      // Save user info to Firestore BEFORE signing out
+      await _firestore.collection("Users").doc(newUserId).set({
         'uid': newUserId,
-        'email': emailController.text,
+        'email': email,
         'role': selectedRole,
-        'name': nameController.text,
-        'password': selectedRole == 'Admin' ? passwordController.text : null,
+        'name': name,
+        'password': selectedRole == 'Admin' ? password : null,
         'assigned_video': 0,
         'completed_video': 0,
         'mobile_number': '',
       });
 
-      // After saving user info
+      // Increment role count
       await incrementRoleCount();
+
+      // Sign out the newly created user
+      await FirebaseAuth.instance.signOut();
+
+      // Re-authenticate the original user
+      if (originalUser != null && credential != null) {
+        try {
+          await originalUser.reauthenticateWithCredential(credential);
+        } catch (reauthError) {
+          // If re-authentication fails, try to sign in with email and password
+          if (originalEmail != null && _password != null) {
+            try {
+              await FirebaseAuth.instance.signInWithEmailAndPassword(
+                email: originalEmail,
+                password: _password!,
+              );
+            } catch (signInError) {
+              debugPrint("Failed to re-authenticate admin user: $signInError");
+            }
+          }
+        }
+      }
 
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
+
+      // Clear the form
+      nameController.clear();
+      emailController.clear();
+      passwordController.clear();
+      confirmPasswordController.clear();
 
       alertDialog(context, 'User has been created successfully!');
     } on FirebaseAuthException catch (e) {
@@ -175,6 +203,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       }[e.code] ?? 'An error occurred. Please try again.';
 
       alertDialog(context, errorMessage);
+    } catch (e) {
+      if (!mounted) return;
+      if (Navigator.canPop(context)) Navigator.pop(context);
+
+      alertDialog(context, 'An unexpected error occurred. Please try again.');
+      debugPrint("Error creating user: $e");
     }
   }
 
