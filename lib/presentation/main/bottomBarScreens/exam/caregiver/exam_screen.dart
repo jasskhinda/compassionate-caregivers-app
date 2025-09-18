@@ -125,7 +125,7 @@ class _ExamScreenState extends State<ExamScreen> {
         final options = (q['options'] ?? []).cast<String>();
         final correctAnswers = (q['correctAnswers'] ?? [])
             .cast<String>()
-            .map((e) => e.trim().toLowerCase())
+            .map((e) => e.trim().toUpperCase())
             .toSet();
 
         final key = '${itemIndex}_$qIndex';
@@ -146,20 +146,21 @@ class _ExamScreenState extends State<ExamScreen> {
         if (selectedType == 'multiple choice') {
           final selectedIndexes = selected as Set<int>;
           final selectedValues = selectedIndexes
-              .map((i) => options[i].trim().toLowerCase())
+              .map((i) => options[i].trim().toUpperCase())
               .toSet();
 
           print("Selected values: $selectedValues");
           print("Correct answers: $correctAnswers");
 
+          // Fix: Proper set comparison for multiple choice questions
           isCorrect = selectedValues.length == correctAnswers.length &&
-              selectedValues.containsAll(correctAnswers);
+              selectedValues.difference(correctAnswers).isEmpty;
 
           answerToSave = selectedValues.toList();
         } else if (selected is int) {
           final selectedIndex = selected;
           if (selectedIndex >= 0 && selectedIndex < options.length) {
-            final selectedValue = options[selectedIndex].trim().toLowerCase();
+            final selectedValue = options[selectedIndex].trim().toUpperCase();
             isCorrect = correctAnswers.contains(selectedValue);
             answerToSave = selectedValue;
           }
