@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../../../component/other/input_text_fields/text_input.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -27,7 +28,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _dob;
   String? _profileImageUrl;
   bool _isLoading = false;
+  bool _isUploadingImage = false;
   XFile? _imageFile;
+  String? _imageError;
 
   // Firebase instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -81,30 +84,100 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // Pick image from gallery
+  // Pick image from gallery with validation
   Future<void> _pickImage() async {
     if (!_isEditing) return;
 
     try {
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      setState(() {
+        _imageError = null;
+        _isUploadingImage = true;
+      });
+
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
       if (pickedFile != null) {
+        // Validate file size (max 5MB)
+        final bytes = await pickedFile.readAsBytes();
+        if (bytes.length > 5 * 1024 * 1024) {
+          setState(() {
+            _imageError = 'Image size must be less than 5MB';
+            _isUploadingImage = false;
+          });
+          return;
+        }
+
+        // Validate file type
+        final fileName = pickedFile.name.toLowerCase();
+        if (!fileName.endsWith('.jpg') &&
+            !fileName.endsWith('.jpeg') &&
+            !fileName.endsWith('.png')) {
+          setState(() {
+            _imageError = 'Please select a valid image file (JPG, JPEG, PNG)';
+            _isUploadingImage = false;
+          });
+          return;
+        }
+
         setState(() {
           _imageFile = pickedFile;
+          _imageError = null;
+          _isUploadingImage = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image selected successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _isUploadingImage = false;
         });
       }
     } catch (e) {
+      setState(() {
+        _imageError = 'Failed to select image. Please try again.';
+        _isUploadingImage = false;
+      });
       debugPrint("Error picking image: $e");
     }
   }
 
-  // Get user info
+  // Update user info with enhanced error handling
   Future<void> _updateUserInfo() async {
-    // Show loading
+    // Clear any previous errors
+    setState(() {
+      _imageError = null;
+    });
+
+    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return const Center(child: CircularProgressIndicator());
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                _imageFile != null ? 'Uploading profile picture...' : 'Updating profile...',
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        );
       },
     );
 
@@ -113,24 +186,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Only upload image if a new one was picked
       if (_imageFile != null) {
-        String fileName = 'profile_images/${_auth.currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        Reference storageRef = _storage.ref().child(fileName);
+        try {
+          String fileName = 'profile_images/${_auth.currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          Reference storageRef = _storage.ref().child(fileName);
 
-        UploadTask uploadTask;
-        if (kIsWeb) {
-          final bytes = await _imageFile!.readAsBytes();
-          uploadTask = storageRef.putData(
-            bytes,
-            SettableMetadata(
-              contentType: 'image/jpeg',
-            ),
-          );
-        } else {
-          uploadTask = storageRef.putFile(File(_imageFile!.path));
+          UploadTask uploadTask;
+          if (kIsWeb) {
+            final bytes = await _imageFile!.readAsBytes();
+            uploadTask = storageRef.putData(
+              bytes,
+              SettableMetadata(
+                contentType: 'image/jpeg',
+                cacheControl: 'public, max-age=31536000',
+              ),
+            );
+          } else {
+            uploadTask = storageRef.putFile(File(_imageFile!.path));
+          }
+
+          // Monitor upload progress
+          uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+            double progress = snapshot.bytesTransferred / snapshot.totalBytes;
+            debugPrint('Upload progress: ${(progress * 100).toStringAsFixed(2)}%');
+          });
+
+          TaskSnapshot taskSnapshot = await uploadTask;
+          newImageUrl = await taskSnapshot.ref.getDownloadURL();
+
+          debugPrint('✅ Image uploaded successfully: $newImageUrl');
+        } catch (uploadError) {
+          debugPrint('❌ Image upload failed: $uploadError');
+          if (mounted) {
+            Navigator.pop(context); // Hide loading dialog
+            setState(() {
+              _imageError = 'Failed to upload image. Please try again.';
+            });
+          }
+          return;
         }
-
-        TaskSnapshot taskSnapshot = await uploadTask;
-        newImageUrl = await taskSnapshot.ref.getDownloadURL();
       }
 
       // 🌟 NEW: Re-authenticate user before updating sensitive info
@@ -172,10 +265,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _isEditing = false;
         _profileImageUrl = newImageUrl;
         _imageFile = null;
+        _imageError = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile updated successfully")),
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(_imageFile != null
+                  ? "Profile and picture updated successfully"
+                  : "Profile updated successfully"),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -217,7 +323,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            EditProfileAppBar(title: 'Edit Profile', done: _isEditing ? 'Cancel' : 'Edit', onTap: () => setState(() { _isEditing = !_isEditing; })),
+            EditProfileAppBar(
+              title: 'Edit Profile',
+              done: _isEditing ? 'Cancel' : 'Edit',
+              onTap: () => setState(() {
+                _isEditing = !_isEditing;
+                if (!_isEditing) {
+                  // Cancel editing - clear any selected image and errors
+                  _imageFile = null;
+                  _imageError = null;
+                }
+              }),
+            ),
             SliverToBoxAdapter(
               child: Center(
                 child: SizedBox(
@@ -237,67 +354,105 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onTap: _isEditing ? _pickImage : null,
                             child: Stack(
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(500),
-                                  child: _imageFile != null
-                                      ? kIsWeb
-                                      ? Image.network(
-                                    _imageFile!.path,
-                                    fit: BoxFit.cover,
-                                    height: 80,
-                                    width: 80,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset(
-                                        Assets.loginBack,
-                                        fit: BoxFit.cover,
-                                        height: 80,
-                                        width: 80,
-                                      );
-                                    },
-                                  )
-                                      : Image.file(
-                                    File(_imageFile!.path),
-                                    fit: BoxFit.cover,
-                                    height: 80,
-                                    width: 80,
-                                  )
-                                      : _profileImageUrl != null
-                                      ? CachedNetworkImage(
-                                    imageUrl: _profileImageUrl!,  // Error updating profile: Unsupported operation: _Namespace
-                                    fit: BoxFit.cover,
-                                    height: 80,
-                                    width: 80,
-                                    placeholder: (context, url) => const Center(
-                                      child: CircularProgressIndicator(),
+                                Container(
+                                  height: 120,
+                                  width: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: AppUtils.getColorScheme(context).primary.withOpacity(0.3),
+                                      width: 3,
                                     ),
-                                    errorWidget: (context, url, error) => Image.asset(
-                                      Assets.loginBack,
-                                      fit: BoxFit.cover,
-                                      height: 80,
-                                      width: 80,
-                                    ),
-                                  )
-                                      : Image.asset(
-                                    Assets.loginBack,
-                                    fit: BoxFit.cover,
-                                    height: 80,
-                                    width: 80,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(60),
+                                    child: _isUploadingImage
+                                        ? Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Center(
+                                              child: CircularProgressIndicator(),
+                                            ),
+                                          )
+                                        : _imageFile != null
+                                            ? kIsWeb
+                                                ? FutureBuilder<Uint8List>(
+                                                    future: _imageFile!.readAsBytes(),
+                                                    builder: (context, snapshot) {
+                                                      if (snapshot.hasData) {
+                                                        return Image.memory(
+                                                          snapshot.data!,
+                                                          fit: BoxFit.cover,
+                                                          height: 120,
+                                                          width: 120,
+                                                        );
+                                                      }
+                                                      return const Center(
+                                                        child: CircularProgressIndicator(),
+                                                      );
+                                                    },
+                                                  )
+                                                : Image.file(
+                                                    File(_imageFile!.path),
+                                                    fit: BoxFit.cover,
+                                                    height: 120,
+                                                    width: 120,
+                                                  )
+                                            : _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                                ? CachedNetworkImage(
+                                                    imageUrl: _profileImageUrl!,
+                                                    fit: BoxFit.cover,
+                                                    height: 120,
+                                                    width: 120,
+                                                    placeholder: (context, url) => Container(
+                                                      color: Colors.grey.shade200,
+                                                      child: const Center(
+                                                        child: CircularProgressIndicator(),
+                                                      ),
+                                                    ),
+                                                    errorWidget: (context, url, error) => Container(
+                                                      color: Colors.grey.shade200,
+                                                      child: Icon(
+                                                        Icons.person,
+                                                        size: 60,
+                                                        color: Colors.grey.shade600,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Container(
+                                                    color: Colors.grey.shade200,
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      size: 60,
+                                                      color: Colors.grey.shade600,
+                                                    ),
+                                                  ),
                                   ),
                                 ),
-                                if (_isEditing)
+                                if (_isEditing && !_isUploadingImage)
                                   Positioned(
-                                    bottom: 0,
-                                    right: 0,
+                                    bottom: 5,
+                                    right: 5,
                                     child: Container(
-                                      padding: const EdgeInsets.all(4),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: AppUtils.getColorScheme(context).primary,
                                         shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
                                       ),
                                       child: Icon(
                                         Icons.camera_alt,
                                         size: 20,
-                                        color: AppUtils.getColorScheme(context).onPrimary,
+                                        color: Colors.white,
                                       ),
                                     ),
                                   ),
@@ -305,6 +460,60 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           ),
                         ),
+
+                        // Error message for image selection
+                        if (_imageError != null)
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _imageError!,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Instructions for image upload
+                        if (_isEditing)
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.info_outline, color: Colors.blue.shade600, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Tap the profile picture to select a new image (JPG, PNG, max 5MB)',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
                         const SizedBox(height: 40),
                         Text(
