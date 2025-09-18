@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
@@ -117,28 +118,28 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
 
     try {
-      // Store current user credentials before creating new one
+      // Store current user before creating new one
       User? originalUser = FirebaseAuth.instance.currentUser;
       String? originalEmail = originalUser?.email;
+      String? originalUid = originalUser?.uid;
 
-      // Get the current user's credential to re-authenticate later
-      AuthCredential? credential;
-      if (originalUser != null && _password != null) {
-        credential = EmailAuthProvider.credential(
-          email: originalEmail!,
-          password: _password!,
-        );
-      }
+      // Create a secondary auth instance to avoid signing out the current user
+      FirebaseApp secondaryApp = await Firebase.initializeApp(
+        name: 'Secondary',
+        options: Firebase.app().options,
+      );
 
-      // Create new user
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      FirebaseAuth secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      // Create new user using secondary auth
+      UserCredential userCredential = await secondaryAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       String newUserId = userCredential.user!.uid;
 
-      // Save user info to Firestore BEFORE signing out
+      // Save user info to Firestore
       await _firestore.collection("Users").doc(newUserId).set({
         'uid': newUserId,
         'email': email,
@@ -153,27 +154,11 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       // Increment role count
       await incrementRoleCount();
 
-      // Sign out the newly created user
-      await FirebaseAuth.instance.signOut();
+      // Sign out from secondary auth and delete the app
+      await secondaryAuth.signOut();
+      await secondaryApp.delete();
 
-      // Re-authenticate the original user
-      if (originalUser != null && credential != null) {
-        try {
-          await originalUser.reauthenticateWithCredential(credential);
-        } catch (reauthError) {
-          // If re-authentication fails, try to sign in with email and password
-          if (originalEmail != null && _password != null) {
-            try {
-              await FirebaseAuth.instance.signInWithEmailAndPassword(
-                email: originalEmail,
-                password: _password!,
-              );
-            } catch (signInError) {
-              debugPrint("Failed to re-authenticate admin user: $signInError");
-            }
-          }
-        }
-      }
+      // The original user remains signed in
 
       if (!mounted) return;
       if (Navigator.canPop(context)) Navigator.pop(context);
