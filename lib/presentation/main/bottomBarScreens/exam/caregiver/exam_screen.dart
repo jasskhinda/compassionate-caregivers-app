@@ -213,7 +213,7 @@ class _ExamScreenState extends State<ExamScreen> {
         String feedbackMessage;
 
         if (percentage < 50) {
-          feedbackMessage = "😟 Don't worry, our nurse will teach you!";
+          feedbackMessage = "😟 Don't worry, our staff will teach you!";
         } else if (percentage < 80) {
           feedbackMessage = "😊 Good job! Keep practicing.";
         } else {

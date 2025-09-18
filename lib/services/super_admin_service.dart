@@ -66,7 +66,7 @@ class SuperAdminService {
         return true;
       }
 
-      // Regular Admins can delete Nurses and Caregivers but NOT other Admins
+      // Regular Admins can delete Staff and Caregivers but NOT other Admins
       if (isRegularAdminUser && targetUserRole != 'Admin') {
         return true;
       }
@@ -92,6 +92,35 @@ class SuperAdminService {
           ...doc.data(),
         };
       }).toList();
+    });
+  }
+
+  /// Get all users regardless of role (only accessible by Super Admin)
+  static Stream<List<Map<String, dynamic>>> getAllUsersStream() {
+    return _firestore
+        .collection('Users')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return {
+          'uid': doc.id,
+          ...doc.data(),
+        };
+      }).toList()..sort((a, b) {
+        // Sort by role first (Admin, Staff, Caregiver), then by name
+        final roleOrder = {'Admin': 0, 'Staff': 1, 'Caregiver': 2};
+        final roleA = roleOrder[a['role']] ?? 3;
+        final roleB = roleOrder[b['role']] ?? 3;
+
+        if (roleA != roleB) {
+          return roleA.compareTo(roleB);
+        }
+
+        // If same role, sort by name
+        final nameA = a['name']?.toString().toLowerCase() ?? '';
+        final nameB = b['name']?.toString().toLowerCase() ?? '';
+        return nameA.compareTo(nameB);
+      });
     });
   }
 
@@ -149,7 +178,7 @@ class SuperAdminService {
     try {
       final countDoc = _firestore.collection('users_count').doc('Ki8jsRs1u9Mk05F0g1UL');
 
-      if (role.toLowerCase() == 'nurse') {
+      if (role.toLowerCase() == 'staff' || role.toLowerCase() == 'nurse') {
         await countDoc.update({
           'nurse': FieldValue.increment(change),
         });

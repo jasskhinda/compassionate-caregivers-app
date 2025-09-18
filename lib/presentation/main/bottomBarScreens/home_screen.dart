@@ -199,13 +199,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (_role == 'Admin')
                             InitialOptionLayout(
                               title: 'Assigned Staff',
-                              optionOneTitle: 'Nurse',
+                              optionOneTitle: 'Staff',
                               optionOneIcon: Icons.health_and_safety,
                               optionTwoTitle: 'Caregiver',
                               optionTwoIcon: Icons.person,
                               optionOneCount: _nurse.toString(),
                               optionTwoCount: _caregiver.toString(),
-                              optionOneOnTap: () => Navigator.pushNamed(context, AppRoutes.allNurseUserScreen),
+                              optionOneOnTap: () => Navigator.pushNamed(context, AppRoutes.allStaffUserScreen),
                               optionTwoOnTap: () => Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen),
                             ),
 
@@ -224,7 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (_role == 'Admin')
                             const SizedBox(height: 15),
 
-                          // Only for Nurse & Admin
+                          // Only for Staff & Admin
                           if (_role != 'Caregiver')
                             Text(
                                 'Manage content',
@@ -261,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
 
                               // If user is nurse show caregiver count
-                              if (_role == 'Nurse')
+                              if (_role == 'Staff')
                                 Expanded(
                                   child: UserCountLayout(
                                     title: 'Caregiver',

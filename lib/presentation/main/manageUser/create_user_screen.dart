@@ -33,7 +33,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   bool isConfirmPasswordVisible = false;
 
   // Dropdown selection
-  String selectedRole = 'Nurse';
+  String selectedRole = 'Staff';
 
   // User info
   String? _role;
@@ -267,7 +267,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        items: ['Nurse', 'Caregiver', _role == 'Admin' ? 'Admin' : ''].map((String role) {
+                        items: ['Staff', 'Caregiver', _role == 'Admin' ? 'Admin' : ''].map((String role) {
                           return DropdownMenuItem(
                             value: role,
                             child: Text(role),

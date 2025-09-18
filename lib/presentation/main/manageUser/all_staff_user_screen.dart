@@ -7,14 +7,14 @@ import '../../../services/super_admin_service.dart';
 import '../../../utils/appRoutes/app_routes.dart';
 import '../../../utils/app_utils/AppUtils.dart';
 
-class AllNurseUserScreen extends StatefulWidget {
-  const AllNurseUserScreen({super.key});
+class AllStaffUserScreen extends StatefulWidget {
+  const AllStaffUserScreen({super.key});
 
   @override
-  State<AllNurseUserScreen> createState() => _AllNurseUserScreenState();
+  State<AllStaffUserScreen> createState() => _AllStaffUserScreenState();
 }
 
-class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
+class _AllStaffUserScreenState extends State<AllStaffUserScreen> {
 
   late TextEditingController _searchController = TextEditingController();
 
@@ -73,7 +73,7 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
         physics: const BouncingScrollPhysics(),
         slivers: [
           // App bar
-          SettingsAppBar(title: 'Nurse'),
+          SettingsAppBar(title: 'Staff'),
 
           // Rest UI
           SliverToBoxAdapter(
@@ -110,7 +110,7 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
                       ),
 
                       const SizedBox(height: 10),
-                      _nurseList(),
+                      _staffList(),
                       const SizedBox(height: 120)
                     ],
                   ),
@@ -123,11 +123,11 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
     );
   }
 
-  Widget _nurseList() {
+  Widget _staffList() {
     final UserServices userServices = UserServices();
 
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: userServices.getNursesStream(),
+      stream: userServices.getStaffStream(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -137,46 +137,46 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
           return Center(child: Text("Error: ${snapshot.error}"));
         }
 
-        final nurses = snapshot.data;
+        final staff = snapshot.data;
 
-        if (nurses == null || nurses.isEmpty) {
-          return Center(child: Text("No nurse found."));
+        if (staff == null || staff.isEmpty) {
+          return Center(child: Text("No staff found."));
         }
 
         // Filter the list based on the search input
-        final filteredNurses = nurses.where((nurse) {
-          final name = nurse['name']?.toLowerCase() ?? '';
-          final email = nurse['email']?.toLowerCase() ?? '';
+        final filteredStaff = staff.where((staffMember) {
+          final name = staffMember['name']?.toLowerCase() ?? '';
+          final email = staffMember['email']?.toLowerCase() ?? '';
           final query = _searchController.text.toLowerCase();
 
           return name.contains(query) || email.contains(query);
         }).toList();
 
-        if (filteredNurses.isEmpty) {
-          return Center(child: Text("No nurse found with that name or email."));
+        if (filteredStaff.isEmpty) {
+          return Center(child: Text("No staff found with that name or email."));
         }
 
         return ListView.builder(
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: filteredNurses.length,
+          itemCount: filteredStaff.length,
           itemBuilder: (context, index) {
-            final nurse = filteredNurses[index];
-            final nurseName = nurse['name'] ?? '';
-            final nurseEmail = nurse['email'] ?? '';
-            final nurseUid = nurse['uid'] ?? '';
-            final profileImageUrl = nurse['profile_image_url'];
+            final staffMember = filteredStaff[index];
+            final staffName = staffMember['name'] ?? '';
+            final staffEmail = staffMember['email'] ?? '';
+            final staffUid = staffMember['uid'] ?? '';
+            final profileImageUrl = staffMember['profile_image_url'];
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: UserLayout(
-                title: nurseName,
-                description: nurseEmail,
+                title: staffName,
+                description: staffEmail,
                 profileImageUrl: profileImageUrl,
                 onTap: () => Navigator.pushNamed(
                   context,
                   AppRoutes.personalInfoScreen,
-                  arguments: {'userID': nurseUid},
+                  arguments: {'userID': staffUid},
                 ),
                 trailing: IconButton(
                   icon: Icon(Icons.delete, color: AppUtils.getColorScheme(context).onSurface),
@@ -185,7 +185,7 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: Text('Delete User'),
-                        content: Text('Are you sure you want to delete this caregiver?'),
+                        content: Text('Are you sure you want to delete this staff member?'),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(false),
@@ -202,13 +202,13 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
                     if (confirm == true) {
                       try {
                         // Use SuperAdminService for enhanced permissions
-                        await SuperAdminService.deleteUser(nurseUid, 'Nurse');
+                        await SuperAdminService.deleteUser(staffUid, 'Staff');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Nurse deleted successfully')),
+                          SnackBar(content: Text('Staff deleted successfully')),
                         );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to delete nurse: $e')),
+                          SnackBar(content: Text('Failed to delete staff: $e')),
                         );
                       }
                     }

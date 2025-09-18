@@ -28,8 +28,9 @@ import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreen
 import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_screen.dart';
 import 'package:caregiver/presentation/main/main_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/all_caregiver_user_screen.dart';
-import 'package:caregiver/presentation/main/manageUser/all_nurse_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/all_staff_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/all_admin_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/all_users_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/create_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
 import 'package:caregiver/presentation/splash/splash_screen.dart';
@@ -132,8 +133,9 @@ class MyApp extends StatelessWidget {
         AppRoutes.assignedVideoScreen: (context) => const AssignedVideoScreen(),
         AppRoutes.manageVideoScreen: (context) => const ManageVideoScreen(),
         AppRoutes.allCaregiverUserScreen: (context) => const AllCaregiverUserScreen(),
-        AppRoutes.allNurseUserScreen: (context) => const AllNurseUserScreen(),
+        AppRoutes.allStaffUserScreen: (context) => const AllStaffUserScreen(),
         AppRoutes.allAdminUserScreen: (context) => const AllAdminUserScreen(),
+        AppRoutes.allUsersScreen: (context) => const AllUsersScreen(),
         AppRoutes.subcategoryScreen: (context) => const SubcategoryScreen(),
         AppRoutes.subcategoryVideoScreen: (context) => const SubcategoryVideoScreen(),
         AppRoutes.createGroupScreen: (context) => const CreateGroupScreen(),

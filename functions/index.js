@@ -70,11 +70,12 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
     await admin.firestore().collection('Users').doc(userId).delete();
 
     // Step 4: Update user count
+    const userCountField = (role.toLowerCase() === 'staff' || role.toLowerCase() === 'nurse') ? 'nurse' : role.toLowerCase();
     await admin.firestore()
         .collection('users_count')
         .doc('Ki8jsRs1u9Mk05F0g1UL')
         .update({
-          [role.toLowerCase()]: admin.firestore.FieldValue.increment(-1),
+          [userCountField]: admin.firestore.FieldValue.increment(-1),
         });
 
     console.log(`✅ All user data deleted for ${userId}`);
@@ -115,7 +116,7 @@ exports.syncUserCounts = functions.https.onCall(async (data, context) => {
     // Get all users from Firestore
     const usersSnapshot = await admin.firestore().collection('Users').get();
 
-    let nurseCount = 0;
+    let staffCount = 0;
     let caregiverCount = 0;
 
     // Count actual users by role
@@ -124,8 +125,9 @@ exports.syncUserCounts = functions.https.onCall(async (data, context) => {
       const role = userData.role || '';
 
       switch (role.toLowerCase()) {
-        case 'nurse':
-          nurseCount++;
+        case 'staff':
+        case 'nurse': // Keep for backward compatibility
+          staffCount++;
           break;
         case 'caregiver':
           caregiverCount++;
@@ -138,16 +140,16 @@ exports.syncUserCounts = functions.https.onCall(async (data, context) => {
         .collection('users_count')
         .doc('Ki8jsRs1u9Mk05F0g1UL')
         .update({
-          nurse: nurseCount,
+          nurse: staffCount, // Keep 'nurse' field name for backward compatibility
           caregiver: caregiverCount,
         });
 
-    console.log(`✅ User counts synced: Nurses: ${nurseCount}, ` +
+    console.log(`✅ User counts synced: Staff: ${staffCount}, ` +
                 `Caregivers: ${caregiverCount}`);
 
     return {
       success: true,
-      nurseCount,
+      staffCount,
       caregiverCount,
       message: 'User counts synced successfully',
     };

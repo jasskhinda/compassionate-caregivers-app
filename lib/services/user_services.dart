@@ -9,14 +9,19 @@ class UserServices {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
-  // Get nurse stream
-  Stream<List<Map<String, dynamic>>> getNursesStream() {
+  // Get staff stream (formerly nurse stream)
+  Stream<List<Map<String, dynamic>>> getStaffStream() {
     return _firestore.collection("Users").snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) => doc.data()) // Extract user data
-          .where((user) => user['role'] == 'Nurse') // Filter only nurses
+          .where((user) => user['role'] == 'Staff') // Filter only staff
           .toList();
     });
+  }
+
+  // Keep for backward compatibility - will be deprecated
+  Stream<List<Map<String, dynamic>>> getNursesStream() {
+    return getStaffStream();
   }
 
   // Get nurse stream

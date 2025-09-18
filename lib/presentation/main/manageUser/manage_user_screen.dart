@@ -22,7 +22,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
 
   // User info
   String? _role;
-  int? nurse;
+  int? staff;
   int? caregiver;
   bool isLoading = true; // Loading state
   bool _isSuperAdmin = false;
@@ -48,7 +48,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
       if (document.exists) {
         var data = document.data() as Map<String, dynamic>;
         setState(() {
-          nurse = data['nurse'];
+          staff = data['nurse'];
           caregiver = data['caregiver'];
           isLoading = false;
         });
@@ -131,31 +131,9 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                         const SizedBox(height: 10),
                         IconBasicButton(text: 'Add new users', buttonColor: AppUtils.getColorScheme(context).tertiaryContainer, textColor: Colors.white, icon: Icons.add, onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)),
                         const SizedBox(height: 20),
-                        Text('Assigned Staff', style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allNurseUserScreen) : {},
-                                child: UserCountLayout(title: 'Nurse', count: nurse.toString(), icon: Icons.health_and_safety)
-                              )
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen) : {},
-                                child: UserCountLayout(title: 'Caregiver', count: caregiver.toString(), icon: Icons.person)
-                              )
-                            ),
-                          ],
-                        ),
 
-                        // Super Admin section
+                        // Super Admin gets unified user management
                         if (_isSuperAdmin) ...[
-                          const SizedBox(height: 30),
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -181,14 +159,37 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 IconBasicButton(
-                                  text: 'Manage Admin Users',
+                                  text: 'Manage All Users',
                                   buttonColor: Colors.red.shade600,
                                   textColor: Colors.white,
-                                  icon: Icons.admin_panel_settings,
-                                  onPressed: () => Navigator.pushNamed(context, AppRoutes.allAdminUserScreen),
+                                  icon: Icons.people,
+                                  onPressed: () => Navigator.pushNamed(context, AppRoutes.allUsersScreen),
                                 ),
                               ],
                             ),
+                          ),
+                        ] else ...[
+                          // Regular admin sees role-based management
+                          Text('Assigned Staff', style: TextStyle(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allStaffUserScreen) : {},
+                                  child: UserCountLayout(title: 'Staff', count: staff.toString(), icon: Icons.health_and_safety)
+                                )
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen) : {},
+                                  child: UserCountLayout(title: 'Caregiver', count: caregiver.toString(), icon: Icons.person)
+                                )
+                              ),
+                            ],
                           ),
                         ],
 
