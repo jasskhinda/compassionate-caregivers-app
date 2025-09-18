@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:caregiver/component/appBar/main_app_bar.dart';
 import 'package:caregiver/component/other/input_text_fields/input_text_field.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/chat/chat_layout.dart';
@@ -61,82 +62,81 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
           return Center(child: CircularProgressIndicator());
         }
 
+        if (!snapshot.hasData) {
+          return Center(child: Text('No users found'));
+        }
+
         final users = snapshot.data!.where((user) {
+          // Filter out current user
           if (user["email"] == _auth.currentUser!.email) return false;
+          
+          // Filter out users with missing or invalid data
+          if (user["name"] == null || 
+              user["name"].toString().isEmpty || 
+              user["name"].toString().toLowerCase() == "unknown user" ||
+              user["email"] == null || 
+              user["email"].toString().isEmpty ||
+              user["uid"] == null || 
+              user["uid"].toString().isEmpty) {
+            return false;
+          }
+          
+          // Filter out users without a valid role (likely deleted users)
+          if (user["role"] == null || user["role"].toString().isEmpty) {
+            return false;
+          }
+          
+          // Apply search filter if search query exists
           if (_searchQuery.isEmpty) return true;
           return user["name"].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
                  user["email"].toString().toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
 
-        // Get all chat rooms for the current user
-        return StreamBuilder<QuerySnapshot>(
-          stream: _firestore
-              .collection('chat_rooms')
-              .where('participants', arrayContains: _auth.currentUser!.uid)
-              .snapshots(),
-          builder: (context, chatSnapshot) {
-            if (chatSnapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
+        if (users.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _searchQuery.isEmpty ? 'No users available' : 'No users found matching your search',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          );
+        }
 
-            if (chatSnapshot.hasError) {
-              return Center(child: Text('Error: ${chatSnapshot.error}'));
-            }
+        return ListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: users.map((userData) => _buildSimpleUserListItem(userData, context)).toList(),
+        );
+      },
+    );
+  }
 
-            // Create a map of user IDs to their chat room data
-            final chatRooms = chatSnapshot.data?.docs ?? [];
-            final userChatData = <String, Map<String, dynamic>>{};
-            
-            for (var chat in chatRooms) {
-              final data = chat.data() as Map<String, dynamic>;
-              final participants = data['participants'] as List<dynamic>;
-              final otherUserId = participants.firstWhere(
-                (id) => id != _auth.currentUser!.uid,
-                orElse: () => null,
-              );
-              if (otherUserId != null) {
-                userChatData[otherUserId] = {
-                  'lastMessageTime': data['lastMessageTime'],
-                  'unreadCount': data['unreadCount_${_auth.currentUser!.uid}'] ?? 0,
-                };
-              }
-            }
-
-            // Sort users based on their chat activity
-            users.sort((a, b) {
-              final aData = userChatData[a['uid']];
-              final bData = userChatData[b['uid']];
-              
-              // If both users have no chat data, keep their original order
-              if (aData == null && bData == null) return 0;
-              
-              // Users with chat data come before users without
-              if (aData == null) return 1;
-              if (bData == null) return -1;
-              
-              // First sort by unread count (users with unread messages come first)
-              final aUnread = aData['unreadCount'] as int;
-              final bUnread = bData['unreadCount'] as int;
-              if (aUnread != bUnread) {
-                return bUnread.compareTo(aUnread);
-              }
-              
-              // Then sort by last message time
-              final aTime = aData['lastMessageTime'] as Timestamp?;
-              final bTime = bData['lastMessageTime'] as Timestamp?;
-              
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-              
-              return bTime.compareTo(aTime);
-            });
-
-            return ListView(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: users.map((userData) => _buildUserListItem(userData, context)).toList(),
-            );
+  Widget _buildSimpleUserListItem(Map<String, dynamic> userData, BuildContext context) {
+    // Get user name with fallback (though filtering should prevent this)
+    String userName = userData["name"]?.toString() ?? "User";
+    if (userName.isEmpty || userName.toLowerCase() == "unknown user") {
+      userName = userData["email"]?.toString().split('@')[0] ?? "User";
+    }
+    
+    return ChatLayout(
+      hasBadge: false,
+      badgeCount: 0,
+      backgroundColor: AppUtils.getColorScheme(context).secondary,
+      title: userName,
+      profileImageUrl: userData["profile_image_url"],
+      lastMessage: "Tap to start chatting",
+      lastMessageTime: null,
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.chatScreen,
+          arguments: {
+            'userName': userName,
+            'userEmail': userData["email"] ?? "",
+            'userID': userData["uid"] ?? "",
+            'isGroupChat': false,
           }
         );
       }
@@ -243,58 +243,7 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
     );
   }
 
-  Widget _buildUserListItem(Map<String, dynamic> userData, BuildContext context) {
-    // Create chat room ID from user IDs (sorted to ensure consistency)
-    List<String> ids = [FirebaseAuth.instance.currentUser!.uid, userData['uid']];
-    ids.sort();
-    String chatRoomId = ids.join('_');
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('chat_rooms')
-          .doc(chatRoomId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .limit(1)
-          .snapshots(),
-      builder: (context, snapshot) {
-        int unreadCount = 0;
-        String lastMessage = '';
-        DateTime? lastMessageTime;
-
-        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          final lastMessageDoc = snapshot.data!.docs.first;
-          lastMessage = lastMessageDoc['message'] as String? ?? '';
-          lastMessageTime = (lastMessageDoc['timestamp'] as Timestamp?)?.toDate();
-          unreadCount = lastMessageDoc['senderId'] == FirebaseAuth.instance.currentUser!.uid 
-              ? 0 
-              : 1; // Simple unread count logic
-        }
-
-        return ChatLayout(
-          hasBadge: unreadCount > 0,
-          badgeCount: unreadCount,
-          backgroundColor: AppUtils.getColorScheme(context).secondary,
-          title: userData["name"],
-          profileImageUrl: userData["profile_image_url"],
-          lastMessage: lastMessage,
-          lastMessageTime: lastMessageTime,
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.chatScreen,
-              arguments: {
-                'userName': userData["name"],
-                'userEmail': userData["email"],
-                'userID': userData["uid"],
-                'isGroupChat': false,
-              }
-            );
-          }
-        );
-      }
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -322,11 +271,7 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
               _searchQuery = '';
               searchController.clear();
             });
-            await Future.wait([
-              _getUserRole(),
-              _chatServices.refreshUserStream(),
-              _chatServices.refreshGroupStream(),
-            ]);
+            await _getUserRole();
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

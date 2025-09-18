@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/presentation/auth/login/login_screen.dart';
 import 'package:caregiver/presentation/main/main_screen.dart';
+import 'package:caregiver/services/user_document_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthWrapper extends StatefulWidget {
@@ -113,10 +114,47 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // User is logged in
         if (snapshot.hasData && snapshot.data != null) {
           final user = snapshot.data!;
-          debugPrint('✅ AuthWrapper: User authenticated - redirecting to MainScreen');
+          debugPrint('✅ AuthWrapper: User authenticated - checking user document...');
           debugPrint('👤 AuthWrapper: User email: ${user.email}');
           debugPrint('🔐 AuthWrapper: User UID: ${user.uid}');
-          return const MainScreen();
+          
+          // Ensure user document exists before proceeding to MainScreen
+          return FutureBuilder<bool>(
+            future: UserDocumentService.ensureUserDocumentExists(
+              customRole: user.email == 'j.khinda@ccgrhc.com' ? 'Admin' : 'Caregiver',
+              customName: user.email == 'j.khinda@ccgrhc.com' ? 'Jass Khinda' : null,
+            ),
+            builder: (context, docSnapshot) {
+              if (docSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Setting up your account...'),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              if (docSnapshot.hasError) {
+                debugPrint('❌ AuthWrapper: Error setting up user document: ${docSnapshot.error}');
+                return const LoginScreen();
+              }
+              
+              final documentCreated = docSnapshot.data ?? false;
+              if (documentCreated) {
+                debugPrint('✅ AuthWrapper: User document ready - redirecting to MainScreen');
+                return const MainScreen();
+              } else {
+                debugPrint('❌ AuthWrapper: Failed to create user document - redirecting to LoginScreen');
+                return const LoginScreen();
+              }
+            },
+          );
         }
 
         // User is not logged in

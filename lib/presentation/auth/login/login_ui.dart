@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/component/other/alert_dialog.dart';
 import 'package:caregiver/presentation/auth/forgot_password.dart';
+import 'package:caregiver/services/user_document_service.dart';
 import '../../../component/other/basic_button.dart';
 import '../../../component/other/input_text_fields/input_text_field.dart';
 import '../../../component/other/input_text_fields/password_text_field.dart';
@@ -63,21 +64,32 @@ class _LoginUiState extends State<LoginUi> {
       final user = userCredential.user;
       if (user == null) throw FirebaseAuthException(code: 'user-not-found');
 
-      // Check if user exists in Firestore
+      // Check if user exists in Firestore, create if missing
       final userDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
           .get();
 
       if (!userDoc.exists) {
-        await FirebaseAuth.instance.signOut();
-        if (!mounted) return;
-        // Navigator.pop(context); // dismiss loading
-        setState(() {
-          isLoading = false;
-        });
-        alertDialog(context, 'Your account has been disabled. Please contact support.');
-        return;
+        debugPrint('🔧 Login: User document missing, creating...');
+        
+        // Create user document instead of signing out
+        final documentCreated = await UserDocumentService.ensureUserDocumentExists(
+          customRole: user.email == 'j.khinda@ccgrhc.com' ? 'Admin' : 'Caregiver',
+          customName: user.email == 'j.khinda@ccgrhc.com' ? 'Jass Khinda' : null,
+        );
+        
+        if (!documentCreated) {
+          await FirebaseAuth.instance.signOut();
+          if (!mounted) return;
+          setState(() {
+            isLoading = false;
+          });
+          alertDialog(context, 'Failed to set up your account. Please contact support.');
+          return;
+        }
+        
+        debugPrint('✅ Login: User document created successfully');
       }
 
       // Save FCM token

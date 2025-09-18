@@ -106,20 +106,50 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                // Apply comprehensive user filtering
+                final allUsers = snapshot.data!.docs
+                    .map((doc) => {
+                          ...doc.data() as Map<String, dynamic>,
+                          'uid': doc.id,
+                        })
+                    .toList();
+
+                final validUsers = allUsers.where((user) {
+                  // Filter out current user
+                  if (user["uid"] == _auth.currentUser!.uid) return false;
+                  
+                  // Filter out users with missing or invalid data
+                  if (user["name"] == null || 
+                      user["name"].toString().isEmpty || 
+                      user["name"].toString().toLowerCase() == "unknown user" ||
+                      user["email"] == null || 
+                      user["email"].toString().isEmpty ||
+                      user["uid"] == null || 
+                      user["uid"].toString().isEmpty) {
+                    return false;
+                  }
+                  
+                  // Filter out users without a valid role (likely deleted users)
+                  if (user["role"] == null || user["role"].toString().isEmpty) {
+                    return false;
+                  }
+                  
+                  return true;
+                }).toList();
+
+                if (validUsers.isEmpty) {
+                  return const Center(child: Text('No users available to add to group'));
+                }
+
                 return ListView.builder(
-                  itemCount: snapshot.data!.docs.length,
+                  itemCount: validUsers.length,
                   itemBuilder: (context, index) {
-                    var user = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                    String userId = snapshot.data!.docs[index].id;
-                    
-                    // Skip current user
-                    if (userId == _auth.currentUser!.uid) {
-                      return const SizedBox.shrink();
-                    }
+                    var user = validUsers[index];
+                    String userId = user['uid'];
 
                     return CheckboxListTile(
-                      title: Text(user['email'] ?? ''),
-                      subtitle: Text(user['role'] ?? ''),
+                      title: Text(user['name'] ?? 'Unknown User'),
+                      subtitle: Text('${user['role'] ?? 'No Role'} • ${user['email'] ?? 'No Email'}'),
                       value: _selectedUsers.contains(userId),
                       onChanged: (bool? value) {
                         setState(() {
