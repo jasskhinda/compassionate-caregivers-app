@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../component/appBar/settings_app_bar.dart';
 import '../../../component/listLayout/user_layout.dart';
 import '../../../component/other/input_text_fields/text_input.dart';
@@ -17,11 +19,43 @@ class AllStaffUserScreen extends StatefulWidget {
 class _AllStaffUserScreenState extends State<AllStaffUserScreen> {
 
   late TextEditingController _searchController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  bool _isAdmin = false;
+  bool _isSuperAdmin = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final role = userData['role'] ?? '';
+          final email = userData['email'] ?? '';
+
+          setState(() {
+            _isAdmin = role == 'Admin';
+            _isSuperAdmin = email.toLowerCase() == 'j.khinda@ccgrhc.com';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      debugPrint('Error checking user role: $e');
+    }
   }
 
   @override
@@ -178,7 +212,7 @@ class _AllStaffUserScreenState extends State<AllStaffUserScreen> {
                   AppRoutes.personalInfoScreen,
                   arguments: {'userID': staffUid},
                 ),
-                trailing: IconButton(
+                trailing: _isAdmin ? IconButton(
                   icon: Icon(Icons.delete, color: AppUtils.getColorScheme(context).onSurface),
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
@@ -213,6 +247,14 @@ class _AllStaffUserScreenState extends State<AllStaffUserScreen> {
                       }
                     }
                   },
+                ) : Container(
+                  width: 40,
+                  height: 40,
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Colors.grey.shade400,
+                    size: 20,
+                  ),
                 ),
               ),
             );

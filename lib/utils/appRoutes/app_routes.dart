@@ -34,5 +34,7 @@ class AppRoutes {
   static const String changePasswordScreen = '/changePasswordScreen';
   static const String termsAndConditionScreen = '/termsAndConditionScreen';
   static const String privacyAndPolicyScreen = '/privacyAndPolicyScreen';
+  static const String createCategoryScreen = '/createCategoryScreen';
+  static const String uploadVideoScreen = '/uploadVideoScreen';
 
 }

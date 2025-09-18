@@ -234,12 +234,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                 )
                             ),
                           const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // if user is admin show add user button
-                              if (_role == 'Admin')
+                          if (_role == 'Admin')
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
                                 Expanded(
                                     child: MaterialButton(
                                       height: 84,
@@ -259,31 +258,79 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     )
                                 ),
+                              ],
+                            ),
 
-                              // If user is nurse show caregiver count
-                              if (_role == 'Staff')
-                                Expanded(
-                                  child: UserCountLayout(
-                                    title: 'Caregiver',
-                                    count: _caregiver.toString(),
-                                    icon: Icons.person
-                                  )
+                          // Staff management capabilities
+                          if (_role == 'Staff')
+                            Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: MaterialButton(
+                                        height: 84,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(15)
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pushNamed(context, AppRoutes.createCategoryScreen);
+                                        },
+                                        color: AppUtils.getColorScheme(context).tertiaryContainer,
+                                        child: const Text(
+                                          'Create Categories',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white
+                                          ),
+                                        ),
+                                      )
+                                    ),
+                                    const SizedBox(width: 15),
+                                    Expanded(
+                                      child: MaterialButton(
+                                        height: 84,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(15)
+                                        ),
+                                        onPressed: () {
+                                          Navigator.pushNamed(context, AppRoutes.uploadVideoScreen);
+                                        },
+                                        color: AppUtils.getColorScheme(context).tertiaryContainer,
+                                        child: const Text(
+                                          'Upload Videos',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white
+                                          ),
+                                        ),
+                                      )
+                                    ),
+                                  ],
                                 ),
-                            ],
-                          ),
+                                const SizedBox(height: 10),
+                                UserCountLayout(
+                                  title: 'Caregiver',
+                                  count: _caregiver.toString(),
+                                  icon: Icons.person
+                                ),
+                              ],
+                            ),
 
                           const SizedBox(height: 15),
 
-                          // Exam
+                          // Exam Management - Available for both Admin and Staff
                           Text(
-                              _role == 'Admin' ? 'Exam Management' : 'Assigned Exams',
+                              (_role == 'Admin' || _role == 'Staff') ? 'Exam Management' : 'Assigned Exams',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppUtils.getColorScheme(context).onSurface
                               )
                           ),
                           const SizedBox(height: 4),
-                          if (_role == 'Admin')
+                          if (_role == 'Admin' || _role == 'Staff')
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               crossAxisAlignment: CrossAxisAlignment.center,

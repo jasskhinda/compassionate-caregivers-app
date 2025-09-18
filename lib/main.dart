@@ -148,6 +148,8 @@ class MyApp extends StatelessWidget {
         AppRoutes.changePasswordScreen: (context) => const ChangePassword(),
         AppRoutes.termsAndConditionScreen: (context) => const TermsAndConditionsScreen(),
         AppRoutes.privacyAndPolicyScreen: (context) => const PrivacyAndPolicyScreen(),
+        AppRoutes.createCategoryScreen: (context) => const LibraryScreen(), // Temporary: Redirect to library screen
+        AppRoutes.uploadVideoScreen: (context) => const AssignVideoScreen(), // Temporary: Redirect to assign video screen
       },
       home: const SplashScreen(),
     );
