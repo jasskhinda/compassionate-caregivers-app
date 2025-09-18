@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class UserServices {
   // Get instance of firestore & auth
@@ -28,7 +29,10 @@ class UserServices {
 
   Future<void> deleteUser(String userId, String role) async {
     try {
-      // Step 1: Delete all videos from caregiver_videos/{userId}/videos
+      // Step 1: Delete user from Firebase Authentication first
+      await _deleteUserFromAuth(userId);
+
+      // Step 2: Delete all videos from caregiver_videos/{userId}/videos
       final videosSnapshot = await FirebaseFirestore.instance
           .collection('caregiver_videos')
           .doc(userId)
@@ -39,19 +43,19 @@ class UserServices {
         await doc.reference.delete();
       }
 
-      // Step 2: Delete caregiver_videos/{userId} doc
+      // Step 3: Delete caregiver_videos/{userId} doc
       await FirebaseFirestore.instance
           .collection('caregiver_videos')
           .doc(userId)
           .delete();
 
-      // Step 3: Delete Users/{userId} doc
+      // Step 4: Delete Users/{userId} doc
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
           .delete();
 
-      // Step 4
+      // Step 5: Update user count
       await _firestore
           .collection('users_count')
           .doc('Ki8jsRs1u9Mk05F0g1UL')
@@ -67,11 +71,16 @@ class UserServices {
 
   Future<void> deleteNurseUser(String userId) async {
     try {
+      // Step 1: Delete user from Firebase Authentication first
+      await _deleteUserFromAuth(userId);
+
+      // Step 2: Delete Users/{userId} doc
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
           .delete();
 
+      // Step 3: Update user count
       await _firestore
           .collection('users_count')
           .doc('Ki8jsRs1u9Mk05F0g1UL')
@@ -82,6 +91,118 @@ class UserServices {
     } catch (e) {
       print('❌ Error deleting user: $e');
       rethrow;
+    }
+  }
+
+  // Helper method to delete user from Firebase Authentication
+  Future<void> _deleteUserFromAuth(String userId) async {
+    try {
+      // Store current user before creating secondary app
+      User? originalUser = FirebaseAuth.instance.currentUser;
+
+      // Get user data to find email for authentication
+      DocumentSnapshot userDoc = await _firestore.collection('Users').doc(userId).get();
+
+      if (userDoc.exists) {
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+        String userEmail = userData['email'];
+        String? userPassword = userData['password']; // Only available for Admin users
+
+        try {
+          // Create secondary Firebase app for user deletion
+          FirebaseApp secondaryApp = await Firebase.initializeApp(
+            name: 'DeleteUser_${DateTime.now().millisecondsSinceEpoch}',
+            options: Firebase.app().options,
+          );
+
+          FirebaseAuth secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+          // For users with stored passwords (Admin), try to sign in and delete
+          if (userPassword != null) {
+            UserCredential userCredential = await secondaryAuth.signInWithEmailAndPassword(
+              email: userEmail,
+              password: userPassword,
+            );
+
+            await userCredential.user!.delete();
+          } else {
+            // For users without stored passwords, we need to use Admin SDK
+            // Since we can't use Admin SDK directly in client, we'll log this
+            print("⚠️ Cannot delete user $userId from Auth - no stored password. Admin SDK required.");
+          }
+
+          // Clean up secondary app
+          await secondaryAuth.signOut();
+          await secondaryApp.delete();
+
+        } catch (authError) {
+          print("⚠️ Could not delete user from Firebase Auth: $authError");
+          // Continue with Firestore deletion even if Auth deletion fails
+        }
+      }
+    } catch (e) {
+      print("⚠️ Error in _deleteUserFromAuth: $e");
+      // Don't rethrow - continue with Firestore deletion
+    }
+  }
+
+  // Method to fix user count discrepancies
+  Future<void> syncUserCounts() async {
+    try {
+      // Get all users from Firestore
+      QuerySnapshot usersSnapshot = await _firestore.collection('Users').get();
+
+      int nurseCount = 0;
+      int caregiverCount = 0;
+
+      // Count actual users by role
+      for (QueryDocumentSnapshot doc in usersSnapshot.docs) {
+        Map<String, dynamic> userData = doc.data() as Map<String, dynamic>;
+        String role = userData['role'] ?? '';
+
+        switch (role.toLowerCase()) {
+          case 'nurse':
+            nurseCount++;
+            break;
+          case 'caregiver':
+            caregiverCount++;
+            break;
+        }
+      }
+
+      // Update the count document with actual counts
+      await _firestore
+          .collection('users_count')
+          .doc('Ki8jsRs1u9Mk05F0g1UL')
+          .update({
+        'nurse': nurseCount,
+        'caregiver': caregiverCount,
+      });
+
+      print("✅ User counts synced: Nurses: $nurseCount, Caregivers: $caregiverCount");
+    } catch (e) {
+      print('❌ Error syncing user counts: $e');
+      rethrow;
+    }
+  }
+
+  // Method to get orphaned Firebase Auth users (users in Auth but not in Firestore)
+  Future<List<String>> getOrphanedAuthUsers() async {
+    try {
+      List<String> orphanedUsers = [];
+
+      // Get all users from Firestore
+      QuerySnapshot firestoreUsers = await _firestore.collection('Users').get();
+      Set<String> firestoreUids = firestoreUsers.docs.map((doc) => doc.id).toSet();
+
+      // Note: We cannot list Firebase Auth users directly from client-side code
+      // This would require Firebase Admin SDK running on a server
+      print("⚠️ Cannot list Firebase Auth users from client-side. Admin SDK required.");
+
+      return orphanedUsers;
+    } catch (e) {
+      print('❌ Error getting orphaned users: $e');
+      return [];
     }
   }
 

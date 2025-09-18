@@ -9,6 +9,7 @@ import 'package:caregiver/component/other/not_found_dialog.dart';
 import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
 import 'package:caregiver/services/user_video_services.dart';
 import 'package:caregiver/services/firebase_service.dart';
+import 'package:caregiver/services/user_services.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 
@@ -29,6 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // User video services instance
   final UserVideoServices _userVideoServices = UserVideoServices();
+
+  // User services instance
+  final UserServices _userServices = UserServices();
 
   // User count
   int? _nurse;
@@ -125,7 +129,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _getUserInfo();
-    _getUserCount();
+    _initializeAndSyncData();
+  }
+
+  Future<void> _initializeAndSyncData() async {
+    // First get user info to know if this is an admin
+    await _getUserInfo();
+
+    // If user is an admin, sync user counts to fix discrepancies
+    if (_role == 'Admin') {
+      try {
+        await _userServices.syncUserCounts();
+        debugPrint('✅ Admin login detected - user counts synced');
+      } catch (e) {
+        debugPrint('❌ Failed to sync user counts: $e');
+      }
+    }
+
+    // Then get the updated user count
+    await _getUserCount();
   }
 
   @override
