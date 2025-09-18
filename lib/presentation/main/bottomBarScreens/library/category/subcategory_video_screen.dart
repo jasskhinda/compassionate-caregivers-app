@@ -163,7 +163,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
     final subcategoryName = args['subcategoryName'] ?? 'Default Sub Category Title';
 
     return Scaffold(
-      bottomNavigationBar: _role == 'Admin' ? Column(
+      bottomNavigationBar: (_role == 'Admin' || _role == 'Staff') ? Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

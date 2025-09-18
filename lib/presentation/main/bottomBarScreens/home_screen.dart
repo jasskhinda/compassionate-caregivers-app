@@ -93,15 +93,27 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (document != null && document.exists) {
-        var data = document.data() as Map<String, dynamic>;
-        setState(() {
-          _role = data['role'] ?? 'Caregiver';
-          _username = data['name'] ?? 'User';
-          _assignedVideo = data['assigned_video'] ?? 0;
-          _completedVideo = data['completed_video'] ?? 0;
-          _isLoading = false;
-        });
-        debugPrint('User info loaded: role=$_role, username=$_username');
+        final rawData = document.data();
+        if (rawData != null) {
+          var data = rawData as Map<String, dynamic>;
+          setState(() {
+            _role = data['role'] ?? 'Caregiver';
+            _username = data['name'] ?? 'User';
+            _assignedVideo = data['assigned_video'] ?? 0;
+            _completedVideo = data['completed_video'] ?? 0;
+            _isLoading = false;
+          });
+          debugPrint('User info loaded: role=$_role, username=$_username');
+        } else {
+          setState(() {
+            _role = 'Caregiver';
+            _username = 'User';
+            _assignedVideo = 0;
+            _completedVideo = 0;
+            _isLoading = false;
+          });
+          debugPrint("User document data is null, using default values");
+        }
       } else {
         setState(() {
           _role = 'Caregiver';

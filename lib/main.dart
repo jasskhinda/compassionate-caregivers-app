@@ -18,6 +18,7 @@ import 'package:caregiver/presentation/main/bottomBarScreens/library/category/su
 import 'package:caregiver/presentation/main/bottomBarScreens/library/category/subcategory_video_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/library/category/vimeo_video_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/library/library_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/library/upload_video_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/library/video_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/notification_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/profile/otherScreens/assigned_video_screen.dart';
@@ -148,8 +149,8 @@ class MyApp extends StatelessWidget {
         AppRoutes.changePasswordScreen: (context) => const ChangePassword(),
         AppRoutes.termsAndConditionScreen: (context) => const TermsAndConditionsScreen(),
         AppRoutes.privacyAndPolicyScreen: (context) => const PrivacyAndPolicyScreen(),
-        AppRoutes.createCategoryScreen: (context) => const LibraryScreen(), // Temporary: Redirect to library screen
-        AppRoutes.uploadVideoScreen: (context) => const AssignVideoScreen(), // Temporary: Redirect to assign video screen
+        AppRoutes.createCategoryScreen: (context) => const LibraryScreen(), // Redirect to library screen for category creation
+        AppRoutes.uploadVideoScreen: (context) => const UploadVideoScreen(), // Dedicated video upload screen
       },
       home: const SplashScreen(),
     );
