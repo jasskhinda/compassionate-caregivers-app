@@ -15,7 +15,7 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
         'User must be authenticated.');
   }
 
-  // Check if the user has admin privileges
+  // Check if the user has admin privileges or is super admin
   const callerUid = context.auth.uid;
   const callerDoc = await admin.firestore().collection('Users')
       .doc(callerUid).get();
@@ -25,20 +25,36 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
         'Only admins can delete users.');
   }
 
+  // Check if caller is super admin for enhanced permissions
+  const callerEmail = callerDoc.data().email;
+  const isSuperAdmin = callerEmail &&
+      callerEmail.toLowerCase() === 'j.khinda@ccgrhc.com';
+
   const {userId, role} = data;
 
+  console.log(`🔍 Delete user request: userId=${userId}, role=${role}, ` +
+      `caller=${callerEmail}, isSuperAdmin=${isSuperAdmin}`);
+
   if (!userId || !role) {
+    console.error('❌ Missing parameters:', {userId, role, data});
     throw new functions.https.HttpsError('invalid-argument',
         'userId and role are required.');
   }
 
   try {
     // Step 1: Delete user from Firebase Authentication
+    let authDeleted = false;
     try {
       await admin.auth().deleteUser(userId);
       console.log(`✅ User ${userId} deleted from Firebase Auth`);
+      authDeleted = true;
     } catch (authError) {
       console.log(`⚠️ Could not delete user from Auth: ${authError.message}`);
+      if (authError.code === 'auth/user-not-found') {
+        console.log(`ℹ️ User ${userId} was already deleted from Auth or ` +
+            `never existed`);
+        authDeleted = true; // Consider this a success
+      }
       // Continue with Firestore deletion even if Auth deletion fails
     }
 
@@ -70,7 +86,8 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
     await admin.firestore().collection('Users').doc(userId).delete();
 
     // Step 4: Update user count
-    const userCountField = (role.toLowerCase() === 'staff' || role.toLowerCase() === 'nurse') ? 'nurse' : role.toLowerCase();
+    const userCountField = (role.toLowerCase() === 'staff' ||
+        role.toLowerCase() === 'nurse') ? 'nurse' : role.toLowerCase();
     await admin.firestore()
         .collection('users_count')
         .doc('Ki8jsRs1u9Mk05F0g1UL')
@@ -78,11 +95,14 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
           [userCountField]: admin.firestore.FieldValue.increment(-1),
         });
 
-    console.log(`✅ All user data deleted for ${userId}`);
+    console.log(`✅ All user data deleted for ${userId} ` +
+        `(Auth: ${authDeleted ? 'deleted' : 'skipped'})`);
 
     return {
       success: true,
-      message: `User ${userId} deleted successfully`,
+      message: `User ${userId} deleted successfully from Firestore` +
+          `${authDeleted ? ' and Firebase Auth' : ' (Auth deletion failed)'}`,
+      authDeleted,
     };
   } catch (error) {
     console.error(`❌ Error deleting user ${userId}:`, error);
@@ -140,12 +160,13 @@ exports.syncUserCounts = functions.https.onCall(async (data, context) => {
         .collection('users_count')
         .doc('Ki8jsRs1u9Mk05F0g1UL')
         .update({
-          nurse: staffCount, // Keep 'nurse' field name for backward compatibility
+          // Keep 'nurse' field name for backward compatibility
+          nurse: staffCount,
           caregiver: caregiverCount,
         });
 
     console.log(`✅ User counts synced: Staff: ${staffCount}, ` +
-                `Caregivers: ${caregiverCount}`);
+        `Caregivers: ${caregiverCount}`);
 
     return {
       success: true,

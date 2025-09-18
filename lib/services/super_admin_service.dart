@@ -146,8 +146,7 @@ class SuperAdminService {
         // Try Cloud Function first
         final result = await functions.httpsCallable('deleteUser').call({
           'userId': userId,
-          'userRole': userRole,
-          'superAdminOverride': await isSuperAdmin(), // Flag for super admin operations
+          'role': userRole, // Changed from 'userRole' to 'role' to match Cloud Function
         });
 
         print('✅ User deleted via Cloud Function: ${result.data}');
