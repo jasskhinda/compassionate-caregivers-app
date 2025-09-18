@@ -278,7 +278,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                   _buildVideoWebView(),
                   const SizedBox(height: 15),
                   _buildVideoInfo(videoTitle, adminName, date),
-                  if (_role == 'Admin' && videoUrl != null && _categoryName != null && _subCategoryName != null)
+                  if ((_role == 'Admin' || _role == 'Staff') && videoUrl != null && _categoryName != null && _subCategoryName != null)
                     _AssignedCaregiverList(
                       categoryName: _categoryName!,
                       subCategoryName: _subCategoryName!,
