@@ -5,7 +5,7 @@ import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/component/other/not_found_dialog.dart';
 import 'package:caregiver/services/category_services.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
-import '../../../../component/appBar/main_app_bar.dart';
+import '../../../../component/appBar/settings_app_bar.dart';
 import '../../../../utils/app_utils/AppUtils.dart';
 import 'package:provider/provider.dart';
 import '../../../../theme/theme_provider.dart';
@@ -114,7 +114,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             physics: const BouncingScrollPhysics(),
             slivers: [
               // App Bar
-              const MainAppBar(title: 'Video Library'),
+              const SettingsAppBar(title: 'Video Library'),
 
               SliverToBoxAdapter(
                 child: Center(
