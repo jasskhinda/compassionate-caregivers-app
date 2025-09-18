@@ -148,24 +148,32 @@ class _ExamScreenState extends State<ExamScreen> {
 
         if (selectedType.contains('multiple')) {
           final selectedIndexes = selected as Set<int>;
-          final selectedValues = selectedIndexes
-              .map((i) => options[i].trim().toUpperCase())
+          // Convert selected indexes to letters (A, B, C, D)
+          final selectedLetters = selectedIndexes
+              .map((i) => String.fromCharCode(65 + i)) // 65 = 'A'
               .toSet();
 
-          print("Selected values: $selectedValues");
+          print("Selected indexes: $selectedIndexes");
+          print("Selected letters: $selectedLetters");
           print("Correct answers: $correctAnswers");
 
-          // Fix: Proper set comparison for multiple choice questions
-          isCorrect = selectedValues.length == correctAnswers.length &&
-              selectedValues.difference(correctAnswers).isEmpty;
+          // Compare letters to letters
+          isCorrect = selectedLetters.length == correctAnswers.length &&
+              selectedLetters.difference(correctAnswers).isEmpty;
 
-          answerToSave = selectedValues.toList();
+          answerToSave = selectedLetters.toList();
         } else if (selected is int) {
           final selectedIndex = selected;
           if (selectedIndex >= 0 && selectedIndex < options.length) {
-            final selectedValue = options[selectedIndex].trim().toUpperCase();
-            isCorrect = correctAnswers.contains(selectedValue);
-            answerToSave = selectedValue;
+            // Convert selected index to letter (A, B, C, D)
+            final selectedLetter = String.fromCharCode(65 + selectedIndex);
+
+            print("Selected index: $selectedIndex");
+            print("Selected letter: $selectedLetter");
+            print("Correct answers: $correctAnswers");
+
+            isCorrect = correctAnswers.contains(selectedLetter);
+            answerToSave = selectedLetter;
           }
         }
 
