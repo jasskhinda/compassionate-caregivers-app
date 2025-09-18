@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 class UserServices {
-  // Get instance of firestore & auth
+  // Get instance of firestore, auth & functions
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
   // Get nurse stream
   Stream<List<Map<String, dynamic>>> getNursesStream() {
@@ -29,67 +31,79 @@ class UserServices {
 
   Future<void> deleteUser(String userId, String role) async {
     try {
-      // Step 1: Delete user from Firebase Authentication first
-      await _deleteUserFromAuth(userId);
+      // Call Cloud Function to delete user properly from both Auth and Firestore
+      final HttpsCallable callable = _functions.httpsCallable('deleteUser');
+      final result = await callable.call({
+        'userId': userId,
+        'role': role,
+      });
 
-      // Step 2: Delete all videos from caregiver_videos/{userId}/videos
-      final videosSnapshot = await FirebaseFirestore.instance
-          .collection('caregiver_videos')
-          .doc(userId)
-          .collection('videos')
-          .get();
+      print("✅ User deleted via Cloud Function: ${result.data['message']}");
 
-      for (final doc in videosSnapshot.docs) {
-        await doc.reference.delete();
+    } catch (e) {
+      print('❌ Error calling Cloud Function to delete user: $e');
+
+      // Fallback to client-side deletion if Cloud Function fails
+      try {
+        await _deleteUserClientSide(userId, role);
+      } catch (fallbackError) {
+        print('❌ Fallback deletion also failed: $fallbackError');
+        rethrow;
+      }
+    }
+  }
+
+  Future<void> _deleteUserClientSide(String userId, String role) async {
+    try {
+      // Fallback method - delete from Firestore only
+      print("⚠️ Using fallback client-side deletion for $userId");
+
+      // Delete all videos from caregiver_videos/{userId}/videos
+      if (role.toLowerCase() == 'caregiver') {
+        final videosSnapshot = await FirebaseFirestore.instance
+            .collection('caregiver_videos')
+            .doc(userId)
+            .collection('videos')
+            .get();
+
+        for (final doc in videosSnapshot.docs) {
+          await doc.reference.delete();
+        }
+
+        // Delete caregiver_videos/{userId} doc
+        await FirebaseFirestore.instance
+            .collection('caregiver_videos')
+            .doc(userId)
+            .delete();
       }
 
-      // Step 3: Delete caregiver_videos/{userId} doc
-      await FirebaseFirestore.instance
-          .collection('caregiver_videos')
-          .doc(userId)
-          .delete();
-
-      // Step 4: Delete Users/{userId} doc
+      // Delete Users/{userId} doc
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(userId)
           .delete();
 
-      // Step 5: Update user count
+      // Update user count
       await _firestore
           .collection('users_count')
           .doc('Ki8jsRs1u9Mk05F0g1UL')
           .update({role.toLowerCase(): FieldValue.increment(-1)});
 
-      print("✅ All user data deleted for $userId");
+      print("✅ User data deleted from Firestore for $userId (Auth deletion skipped)");
 
     } catch (e) {
-      print('❌ Error deleting user: $e');
+      print('❌ Error in client-side deletion: $e');
       rethrow;
     }
   }
 
   Future<void> deleteNurseUser(String userId) async {
     try {
-      // Step 1: Delete user from Firebase Authentication first
-      await _deleteUserFromAuth(userId);
-
-      // Step 2: Delete Users/{userId} doc
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userId)
-          .delete();
-
-      // Step 3: Update user count
-      await _firestore
-          .collection('users_count')
-          .doc('Ki8jsRs1u9Mk05F0g1UL')
-          .update({'nurse': FieldValue.increment(-1)});
-
-      print("✅ All user data deleted for $userId");
+      // Call Cloud Function to delete nurse user
+      await deleteUser(userId, 'Nurse');
 
     } catch (e) {
-      print('❌ Error deleting user: $e');
+      print('❌ Error deleting nurse user: $e');
       rethrow;
     }
   }
@@ -149,6 +163,23 @@ class UserServices {
   // Method to fix user count discrepancies
   Future<void> syncUserCounts() async {
     try {
+      // Try to use Cloud Function for syncing
+      final HttpsCallable callable = _functions.httpsCallable('syncUserCounts');
+      final result = await callable.call();
+
+      print("✅ User counts synced via Cloud Function: ${result.data['message']}");
+      print("Nurses: ${result.data['nurseCount']}, Caregivers: ${result.data['caregiverCount']}");
+
+    } catch (e) {
+      print('❌ Error calling Cloud Function for sync, using fallback: $e');
+
+      // Fallback to client-side sync
+      await _syncUserCountsClientSide();
+    }
+  }
+
+  Future<void> _syncUserCountsClientSide() async {
+    try {
       // Get all users from Firestore
       QuerySnapshot usersSnapshot = await _firestore.collection('Users').get();
 
@@ -179,7 +210,7 @@ class UserServices {
         'caregiver': caregiverCount,
       });
 
-      print("✅ User counts synced: Nurses: $nurseCount, Caregivers: $caregiverCount");
+      print("✅ User counts synced (fallback): Nurses: $nurseCount, Caregivers: $caregiverCount");
     } catch (e) {
       print('❌ Error syncing user counts: $e');
       rethrow;
