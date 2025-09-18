@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/component/other/input_text_fields/input_text_field.dart';
+import 'professional_create_exam_screen.dart';
 
 import '../../../../services/exam_services.dart';
 import '../../../../utils/app_utils/AppUtils.dart';
@@ -355,84 +356,266 @@ class _CreateExamScreenState extends State<CreateExamScreen> {
                                   }
                               ),
                               const SizedBox(height: 14),
-                              InputTextField(
-                                  controller: option1Controller,
-                                  onTextChanged: (value) {
-                                    setState(() {}); // Call setState to rebuild the widget on text change
-                                  },
-                                  labelText: 'Option 1',
-                                  hintText: 'Option 1',
-                                  prefixIcon: Icons.question_answer,
-                                  suffixIcon: Icons.clear,
-                                  onIconPressed: () {
-                                    setState(() {
-                                      option1Controller.clear(); // Clear text field on tap
-                                    });
-                                  }
+                              // IMPROVED OPTIONS INPUT - Much clearer!
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '📝 Answer Options (Just type the option text)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'The app automatically adds A., B., C., D. - just type the option text!',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 3),
-                              InputTextField(
-                                  controller: option2Controller,
-                                  onTextChanged: (value) {
-                                    setState(() {}); // Call setState to rebuild the widget on text change
-                                  },
-                                  labelText: 'Option 2',
-                                  hintText: 'Option 2',
-                                  prefixIcon: Icons.question_answer,
-                                  suffixIcon: Icons.clear,
-                                  onIconPressed: () {
-                                    setState(() {
-                                      option2Controller.clear(); // Clear text field on tap
-                                    });
-                                  }
+                              const SizedBox(height: 10),
+
+                              // Option A
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade100,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'A',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: InputTextField(
+                                        controller: option1Controller,
+                                        onTextChanged: (value) {
+                                          setState(() {});
+                                        },
+                                        labelText: 'Option A',
+                                        hintText: 'e.g., Red blood cells',
+                                        prefixIcon: Icons.looks_one,
+                                        suffixIcon: Icons.clear,
+                                        onIconPressed: () {
+                                          setState(() {
+                                            option1Controller.clear();
+                                          });
+                                        }
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 3),
-                              InputTextField(
-                                  controller: option3Controller,
-                                  onTextChanged: (value) {
-                                    setState(() {}); // Call setState to rebuild the widget on text change
-                                  },
-                                  labelText: 'Option 3',
-                                  hintText: 'Option 3',
-                                  prefixIcon: Icons.question_answer,
-                                  suffixIcon: Icons.clear,
-                                  onIconPressed: () {
-                                    setState(() {
-                                      option3Controller.clear(); // Clear text field on tap
-                                    });
-                                  }
+                              const SizedBox(height: 8),
+
+                              // Option B
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade100,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'B',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.orange.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: InputTextField(
+                                        controller: option2Controller,
+                                        onTextChanged: (value) {
+                                          setState(() {});
+                                        },
+                                        labelText: 'Option B',
+                                        hintText: 'e.g., White blood cells',
+                                        prefixIcon: Icons.looks_two,
+                                        suffixIcon: Icons.clear,
+                                        onIconPressed: () {
+                                          setState(() {
+                                            option2Controller.clear();
+                                          });
+                                        }
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 3),
-                              InputTextField(
-                                  controller: option4Controller,
-                                  onTextChanged: (value) {
-                                    setState(() {}); // Call setState to rebuild the widget on text change
-                                  },
-                                  labelText: 'Option 4',
-                                  hintText: 'Option 4',
-                                  prefixIcon: Icons.question_answer,
-                                  suffixIcon: Icons.clear,
-                                  onIconPressed: () {
-                                    setState(() {
-                                      option4Controller.clear(); // Clear text field on tap
-                                    });
-                                  }
+                              const SizedBox(height: 8),
+
+                              // Option C (Optional)
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade100,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'C',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: InputTextField(
+                                        controller: option3Controller,
+                                        onTextChanged: (value) {
+                                          setState(() {});
+                                        },
+                                        labelText: 'Option C (Optional)',
+                                        hintText: 'e.g., Platelets',
+                                        prefixIcon: Icons.looks_3,
+                                        suffixIcon: Icons.clear,
+                                        onIconPressed: () {
+                                          setState(() {
+                                            option3Controller.clear();
+                                          });
+                                        }
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 7),
-                              InputTextField(
-                                  controller: answerController,
-                                  onTextChanged: (value) {
-                                    setState(() {}); // Call setState to rebuild the widget on text change
-                                  },
-                                  labelText: 'Type Answer',
-                                  hintText: 'Type correct answer(s) like A,B,C', // List<String> selectedAnswers = answerText.split(',').map((e) => e.trim()).toList();
-                                  prefixIcon: Icons.abc,
-                                  suffixIcon: Icons.clear,
-                                  onIconPressed: () {
-                                    setState(() {
-                                      answerController.clear(); // Clear text field on tap
-                                    });
-                                  }
+                              const SizedBox(height: 8),
+
+                              // Option D (Optional)
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'D',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: InputTextField(
+                                        controller: option4Controller,
+                                        onTextChanged: (value) {
+                                          setState(() {});
+                                        },
+                                        labelText: 'Option D (Optional)',
+                                        hintText: 'e.g., Plasma',
+                                        prefixIcon: Icons.looks_4,
+                                        suffixIcon: Icons.clear,
+                                        onIconPressed: () {
+                                          setState(() {
+                                            option4Controller.clear();
+                                          });
+                                        }
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 15),
+
+                              // IMPROVED ANSWER INPUT - Much simpler!
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.amber.shade200),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '✅ Correct Answer (Super Simple!)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Just type the letter: A, B, C, or D (or A,B for multiple answers)',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.amber.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    InputTextField(
+                                        controller: answerController,
+                                        onTextChanged: (value) {
+                                          setState(() {});
+                                        },
+                                        labelText: 'Correct Answer',
+                                        hintText: 'A  (or  A,C  for multiple answers)',
+                                        prefixIcon: Icons.check_circle,
+                                        suffixIcon: Icons.clear,
+                                        onIconPressed: () {
+                                          setState(() {
+                                            answerController.clear();
+                                          });
+                                        }
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.info, size: 16, color: Colors.amber.shade600),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            'Examples: "A" for single answer, "A,C" for multiple answers',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.amber.shade600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 10),
                               DropdownButtonFormField<String>(
@@ -484,8 +667,65 @@ class _CreateExamScreenState extends State<CreateExamScreen> {
 
                         const SizedBox(height: 30),
 
+                        // Professional Exam Creator Button
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.indigo.shade400, Colors.purple.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.star, color: Colors.white, size: 24),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Professional Exam Creator',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Advanced features: Multiple question types, analytics, security features, and more!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              BasicButton(
+                                text: 'Try Professional Creator',
+                                buttonColor: Colors.white,
+                                textColor: Colors.indigo.shade700,
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const ProfessionalCreateExamScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
                         BasicButton(
-                          text: 'Publish Exam',
+                          text: 'Publish Simple Exam',
                           buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
                           textColor: Colors.white,
                           onPressed: () {
