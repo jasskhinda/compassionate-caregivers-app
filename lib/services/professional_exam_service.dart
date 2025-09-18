@@ -336,4 +336,36 @@ class ProfessionalExamService {
       rethrow;
     }
   }
+
+  // Copy an existing professional exam
+  static Future<String> copyExam({
+    required String examId,
+    String? newTitle,
+    bool publishImmediately = false,
+  }) async {
+    try {
+      final originalExam = await getExamById(examId);
+      if (originalExam == null) {
+        throw Exception('Original exam not found');
+      }
+
+      final newExam = originalExam.copyWith(
+        id: '', // Will be set by createExam
+        title: newTitle ?? '${originalExam.title} (Copy)',
+        createdBy: _auth.currentUser?.uid ?? '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        isPublished: publishImmediately,
+        assignedUsers: [], // Reset assigned users for copy
+      );
+
+      final newExamId = await createExam(newExam);
+      print('Professional exam copied successfully. New ID: $newExamId');
+      return newExamId;
+
+    } catch (e) {
+      print('Error copying professional exam: $e');
+      rethrow;
+    }
+  }
 }

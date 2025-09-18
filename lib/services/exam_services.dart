@@ -181,4 +181,72 @@ class ExamService {
     }
   }
 
+  // Copy an existing exam
+  static Future<String> copyExam({
+    required String examId,
+    String? newTitle,
+    bool publishImmediately = false,
+  }) async {
+    try {
+      // 1. Get the original exam
+      final originalExamDoc = await FirebaseFirestore.instance
+          .collection('exams')
+          .doc(examId)
+          .get();
+
+      if (!originalExamDoc.exists) {
+        throw Exception("Original exam not found");
+      }
+
+      final originalData = originalExamDoc.data()!;
+
+      // 2. Create new document reference
+      final newDocRef = FirebaseFirestore.instance.collection('exams').doc();
+
+      // 3. Prepare new exam data
+      final newExamData = {
+        'id': newDocRef.id,
+        'examTitle': newTitle ?? '${originalData['examTitle']} (Copy)',
+        'timer': originalData['timer'],
+        'items': originalData['items'], // Copy all questions
+        'timestamp': FieldValue.serverTimestamp(),
+        'assignedUsers': <String>[], // Reset assigned users for copy
+        'isPublished': publishImmediately, // Can be published immediately or kept as draft
+        'copiedFrom': examId, // Track the original exam
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+
+      // 4. Save the new exam
+      await newDocRef.set(newExamData);
+
+      print("Exam copied successfully. New ID: ${newDocRef.id}");
+      return newDocRef.id;
+
+    } catch (e) {
+      print("Error copying exam: $e");
+      rethrow;
+    }
+  }
+
+  // Get exam by ID (useful for editing copied exams)
+  static Future<Map<String, dynamic>?> getExamById(String examId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('exams')
+          .doc(examId)
+          .get();
+
+      if (doc.exists) {
+        return {
+          'id': doc.id,
+          ...doc.data()!,
+        };
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching exam by ID: $e');
+      return null;
+    }
+  }
+
 }

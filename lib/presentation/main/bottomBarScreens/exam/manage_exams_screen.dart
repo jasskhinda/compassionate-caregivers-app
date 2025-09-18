@@ -26,6 +26,125 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
       isLoading = false;
     });
   }
+
+  void _showCopyDialog(Map<String, dynamic> exam) {
+    final titleController = TextEditingController(
+      text: '${exam['examTitle']} (Copy)',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Copy Exam'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'New Exam Title',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 1,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Choose an option:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _copyExam(
+                exam['id'],
+                titleController.text.trim(),
+                publishImmediately: false,
+              );
+            },
+            child: const Text('Copy as Draft'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _copyExam(
+                exam['id'],
+                titleController.text.trim(),
+                publishImmediately: true,
+              );
+            },
+            child: const Text(
+              'Copy & Publish',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyExam(String examId, String newTitle, {bool publishImmediately = false}) async {
+    if (newTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title for the new exam')),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final newExamId = await ExamService.copyExam(
+        examId: examId,
+        newTitle: newTitle,
+        publishImmediately: publishImmediately,
+      );
+
+      Navigator.of(context).pop(); // Dismiss loading dialog
+
+      final message = publishImmediately
+          ? 'Exam copied and published successfully!'
+          : 'Exam copied as draft successfully!';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'View',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExamDetailScreen(examId: newExamId),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      // Refresh the exam list
+      fetchExams();
+
+    } catch (e) {
+      Navigator.of(context).pop(); // Dismiss loading dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error copying exam: $e')),
+      );
+    }
+  }
   @override
   void initState() {
     super.initState();
@@ -100,6 +219,12 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
                                               );
                                             }
                                         ),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          onPressed: () => _showCopyDialog(exam),
+                                          icon: const Icon(Icons.copy, color: Colors.blue),
+                                          tooltip: 'Copy Exam',
+                                        ),
                                         IconButton(
                                           onPressed: () async {
                                             final shouldDelete = await showDialog<bool>(
@@ -126,6 +251,7 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
                                             }
                                           },
                                           icon: const Icon(Icons.delete, color: Colors.red),
+                                          tooltip: 'Delete Exam',
                                         ),
                                       ],
                                     ),
