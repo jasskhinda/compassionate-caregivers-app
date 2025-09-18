@@ -29,6 +29,7 @@ import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_scr
 import 'package:caregiver/presentation/main/main_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/all_caregiver_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/all_nurse_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/all_admin_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/create_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
 import 'package:caregiver/presentation/splash/splash_screen.dart';
@@ -132,6 +133,7 @@ class MyApp extends StatelessWidget {
         AppRoutes.manageVideoScreen: (context) => const ManageVideoScreen(),
         AppRoutes.allCaregiverUserScreen: (context) => const AllCaregiverUserScreen(),
         AppRoutes.allNurseUserScreen: (context) => const AllNurseUserScreen(),
+        AppRoutes.allAdminUserScreen: (context) => const AllAdminUserScreen(),
         AppRoutes.subcategoryScreen: (context) => const SubcategoryScreen(),
         AppRoutes.subcategoryVideoScreen: (context) => const SubcategoryVideoScreen(),
         AppRoutes.createGroupScreen: (context) => const CreateGroupScreen(),

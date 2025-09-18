@@ -5,6 +5,7 @@ import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/services/super_admin_service.dart';
 import '../../../component/home/user_count_layout.dart';
 
 class ManageUserScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
   int? nurse;
   int? caregiver;
   bool isLoading = true; // Loading state
+  bool _isSuperAdmin = false;
 
   Future<void> _refreshData() async {
     setState(() {
@@ -32,6 +34,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
     await Future.wait([
       getDocument(),
       _getUserInfo(),
+      _checkSuperAdminStatus(),
     ]);
   }
 
@@ -60,6 +63,18 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
         isLoading = false;
       });
       debugPrint("Error fetching document: $e");
+    }
+  }
+
+  // Check if user is Super Admin
+  Future<void> _checkSuperAdminStatus() async {
+    try {
+      final isSuperAdmin = await SuperAdminService.isSuperAdmin();
+      setState(() {
+        _isSuperAdmin = isSuperAdmin;
+      });
+    } catch (e) {
+      debugPrint("Error checking super admin status: $e");
     }
   }
 
@@ -137,6 +152,46 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                             ),
                           ],
                         ),
+
+                        // Super Admin section
+                        if (_isSuperAdmin) ...[
+                          const SizedBox(height: 30),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.security, color: Colors.red.shade600),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Super Admin Controls',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red.shade700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                IconBasicButton(
+                                  text: 'Manage Admin Users',
+                                  buttonColor: Colors.red.shade600,
+                                  textColor: Colors.white,
+                                  icon: Icons.admin_panel_settings,
+                                  onPressed: () => Navigator.pushNamed(context, AppRoutes.allAdminUserScreen),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
                         // Add extra space at the bottom to ensure scrolling works
                         const SizedBox(height: 100),
                       ],

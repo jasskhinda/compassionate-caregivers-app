@@ -3,6 +3,7 @@ import '../../../component/appBar/settings_app_bar.dart';
 import '../../../component/listLayout/user_layout.dart';
 import '../../../component/other/input_text_fields/text_input.dart';
 import '../../../services/user_services.dart';
+import '../../../services/super_admin_service.dart';
 import '../../../utils/appRoutes/app_routes.dart';
 import '../../../utils/app_utils/AppUtils.dart';
 
@@ -200,13 +201,14 @@ class _AllNurseUserScreenState extends State<AllNurseUserScreen> {
 
                     if (confirm == true) {
                       try {
-                        await userServices.deleteNurseUser(nurseUid);
+                        // Use SuperAdminService for enhanced permissions
+                        await SuperAdminService.deleteUser(nurseUid, 'Nurse');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('User deleted successfully')),
+                          SnackBar(content: Text('Nurse deleted successfully')),
                         );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to delete user')),
+                          SnackBar(content: Text('Failed to delete nurse: $e')),
                         );
                       }
                     }

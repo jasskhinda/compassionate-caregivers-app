@@ -4,6 +4,7 @@ import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../../component/listLayout/user_layout.dart';
 import '../../../component/other/input_text_fields/text_input.dart';
 import '../../../services/user_services.dart';
+import '../../../services/super_admin_service.dart';
 import '../../../utils/appRoutes/app_routes.dart';
 
 class AllCaregiverUserScreen extends StatefulWidget {
@@ -197,13 +198,13 @@ class _AllCaregiverUserScreenState extends State<AllCaregiverUserScreen> {
 
                     if (confirm == true) {
                       try {
-                        await userServices.deleteUser(caregiverUid, caregiverRole);
+                        await SuperAdminService.deleteUser(caregiverUid, caregiverRole);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('User deleted successfully')),
+                          SnackBar(content: Text('Caregiver deleted successfully')),
                         );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to delete user')),
+                          SnackBar(content: Text('Failed to delete caregiver: $e')),
                         );
                       }
                     }
