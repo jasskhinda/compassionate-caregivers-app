@@ -1,6 +1,20 @@
 [build]
-  command = "flutter build web --release"
+  command = """
+    # Install Flutter
+    git clone https://github.com/flutter/flutter.git --depth 1 -b stable _flutter
+    export PATH="$PATH:$PWD/_flutter/bin"
+
+    # Run Flutter doctor and get dependencies
+    flutter doctor
+    flutter pub get
+
+    # Build the web app
+    flutter build web --release
+  """
   publish = "build/web"
+
+[build.environment]
+  FLUTTER_VERSION = "stable"
 
 [[redirects]]
   from = "/*"
