@@ -133,7 +133,10 @@ class _ExamScreenState extends State<ExamScreen> {
 
         final selected = selectedAnswers[key];
         print("\nProcessing question $key");
+        print("Question type: '$selectedType'");
         print("Selected answer: $selected");
+        print("Available options: $options");
+        print("Correct answers (stored): $correctAnswers");
 
         bool isCorrect = false;
         dynamic answerToSave;
@@ -143,7 +146,7 @@ class _ExamScreenState extends State<ExamScreen> {
           continue;
         }
 
-        if (selectedType == 'multiple choice') {
+        if (selectedType.contains('multiple')) {
           final selectedIndexes = selected as Set<int>;
           final selectedValues = selectedIndexes
               .map((i) => options[i].trim().toUpperCase())
@@ -168,15 +171,19 @@ class _ExamScreenState extends State<ExamScreen> {
 
         if (isCorrect) {
           correctAnswersCount++;
-          print("Correct! Total correct so far: $correctAnswersCount");
+          print("✅ CORRECT! Total correct so far: $correctAnswersCount");
         } else {
-          print("Incorrect.");
+          print("❌ INCORRECT!");
         }
 
         answersToSave[key] = answerToSave;
       }
     }
 
+    print("\n🎯 FINAL SCORING SUMMARY:");
+    print("Total Questions: $totalQuestions");
+    print("Correct Answers: $correctAnswersCount");
+    print("Final Score: ${((correctAnswersCount / totalQuestions) * 100).round()}%");
     print("Final Answers to Save: $answersToSave");
 
     await FirebaseFirestore.instance
