@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/exam/exam_detail_screen.dart';
@@ -18,6 +20,11 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
 
   List<Map<String, dynamic>> exams = [];
   bool isLoading = true;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isAdmin = false;
+  String _userRole = '';
 
   Future<void> fetchExams() async {
     final data = await ExamService.getAllExams();
@@ -149,6 +156,27 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
   void initState() {
     super.initState();
     fetchExams();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final role = userData['role'] ?? '';
+
+          setState(() {
+            _userRole = role;
+            _isAdmin = role == 'Admin';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking user role: $e');
+    }
   }
   @override
   Widget build(BuildContext context) {
@@ -160,7 +188,9 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
           physics: const BouncingScrollPhysics(),
           slivers: [
             // APP BAR
-            const SettingsAppBar(title: 'Manage Exams'),
+            SettingsAppBar(
+              title: _isAdmin ? 'Manage Exams' : 'Assign Exams',
+            ),
 
             SliverToBoxAdapter(
               child: Center(
@@ -220,13 +250,15 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
                                             }
                                         ),
                                         const SizedBox(width: 4),
-                                        IconButton(
-                                          onPressed: () => _showCopyDialog(exam),
-                                          icon: const Icon(Icons.copy, color: Colors.blue),
-                                          tooltip: 'Copy Exam',
-                                        ),
-                                        IconButton(
-                                          onPressed: () async {
+                                        // Admin-only actions: Copy and Delete
+                                        if (_isAdmin) ...[
+                                          IconButton(
+                                            onPressed: () => _showCopyDialog(exam),
+                                            icon: const Icon(Icons.copy, color: Colors.blue),
+                                            tooltip: 'Copy Exam',
+                                          ),
+                                          IconButton(
+                                            onPressed: () async {
                                             final shouldDelete = await showDialog<bool>(
                                               context: context,
                                               builder: (context) => AlertDialog(
@@ -253,6 +285,21 @@ class _ManageExamsScreenState extends State<ManageExamsScreen> {
                                           icon: const Icon(Icons.delete, color: Colors.red),
                                           tooltip: 'Delete Exam',
                                         ),
+                                        ], // End of Admin-only actions
+
+                                        // Staff can only assign exams
+                                        if (_userRole == 'Staff')
+                                          IconButton(
+                                            onPressed: () {
+                                              Navigator.pushNamed(
+                                                context,
+                                                AppRoutes.assignExamScreen,
+                                                arguments: {'id': exam['id']},
+                                              );
+                                            },
+                                            icon: const Icon(Icons.assignment, color: Colors.green),
+                                            tooltip: 'Assign Exam',
+                                          ),
                                       ],
                                     ),
                                   ),

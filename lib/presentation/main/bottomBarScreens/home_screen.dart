@@ -321,16 +321,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           const SizedBox(height: 15),
 
-                          // Exam Management - Available for both Admin and Staff
+                          // Exam Management - Admin has full access, Staff can only assign
                           Text(
-                              (_role == 'Admin' || _role == 'Staff') ? 'Exam Management' : 'Assigned Exams',
+                              _role == 'Admin' ? 'Exam Management' : _role == 'Staff' ? 'Assign Exams' : 'Assigned Exams',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppUtils.getColorScheme(context).onSurface
                               )
                           ),
                           const SizedBox(height: 4),
-                          if (_role == 'Admin' || _role == 'Staff')
+
+                          // Admin: Full exam management (create & manage)
+                          if (_role == 'Admin')
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               crossAxisAlignment: CrossAxisAlignment.center,
@@ -375,6 +377,29 @@ class _HomeScreenState extends State<HomeScreen> {
                                     )
                                 ),
                               ],
+                            ),
+
+                          // Staff: Can only assign existing exams
+                          if (_role == 'Staff')
+                            SizedBox(
+                              width: double.infinity,
+                              child: MaterialButton(
+                                height: 84,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15)
+                                ),
+                                onPressed: () {
+                                  Navigator.pushNamed(context, AppRoutes.manageExamScreen);
+                                },
+                                color: AppUtils.getColorScheme(context).tertiaryContainer,
+                                child: const Text(
+                                  'Assign Exams to Caregivers',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white
+                                  ),
+                                ),
+                              ),
                             ),
 
                           if (_role == 'Caregiver')
