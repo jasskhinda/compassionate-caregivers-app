@@ -107,8 +107,8 @@ class SuperAdminService {
           ...doc.data(),
         };
       }).toList()..sort((a, b) {
-        // Sort by role first (Admin, Staff, Caregiver), then by name
-        final roleOrder = {'Admin': 0, 'Staff': 1, 'Caregiver': 2};
+        // Sort by role first (Admin, Staff/Nurse, Caregiver), then by name
+        final roleOrder = {'Admin': 0, 'Staff': 1, 'Nurse': 1, 'Caregiver': 2};
         final roleA = roleOrder[a['role']] ?? 3;
         final roleB = roleOrder[b['role']] ?? 3;
 

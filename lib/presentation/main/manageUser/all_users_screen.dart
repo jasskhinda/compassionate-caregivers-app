@@ -277,6 +277,10 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
         if (_selectedFilter != 'All') {
           filteredUsers = allUsers.where((user) {
             final role = user['role']?.toString() ?? '';
+            // For Staff filter, include both Staff and Nurse roles
+            if (_selectedFilter == 'Staff') {
+              return role == 'Staff' || role == 'Nurse';
+            }
             return role == _selectedFilter;
           }).toList();
         }
@@ -461,6 +465,7 @@ class _AllUsersScreenState extends State<AllUsersScreen> {
       case 'admin':
         return Colors.red.shade600;
       case 'staff':
+      case 'nurse':
         return Colors.blue.shade600;
       case 'caregiver':
         return Colors.green.shade600;
