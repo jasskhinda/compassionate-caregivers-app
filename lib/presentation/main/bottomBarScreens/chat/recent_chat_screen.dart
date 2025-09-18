@@ -66,26 +66,58 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
           return Center(child: Text('No users found'));
         }
 
-        final users = snapshot.data!.where((user) {
+        // First filter out invalid users
+        final validUsers = snapshot.data!.where((user) {
           // Filter out current user
           if (user["email"] == _auth.currentUser!.email) return false;
-          
+
           // Filter out users with missing or invalid data
-          if (user["name"] == null || 
-              user["name"].toString().isEmpty || 
+          if (user["name"] == null ||
+              user["name"].toString().isEmpty ||
               user["name"].toString().toLowerCase() == "unknown user" ||
-              user["email"] == null || 
+              user["email"] == null ||
               user["email"].toString().isEmpty ||
-              user["uid"] == null || 
+              user["uid"] == null ||
               user["uid"].toString().isEmpty) {
             return false;
           }
-          
+
           // Filter out users without a valid role (likely deleted users)
           if (user["role"] == null || user["role"].toString().isEmpty) {
             return false;
           }
-          
+
+          return true;
+        }).toList();
+
+        // Remove duplicates by email (keep the most recent one based on name/data completeness)
+        final Map<String, Map<String, dynamic>> uniqueUsersMap = {};
+        for (var user in validUsers) {
+          final email = user["email"].toString().toLowerCase();
+
+          if (!uniqueUsersMap.containsKey(email)) {
+            uniqueUsersMap[email] = user;
+          } else {
+            // Keep the user with more complete data (preferring non-empty names)
+            final existingUser = uniqueUsersMap[email]!;
+            final existingName = existingUser["name"]?.toString() ?? "";
+            final currentName = user["name"]?.toString() ?? "";
+
+            // Prefer user with actual name over generic ones
+            if (currentName.isNotEmpty && existingName.isEmpty) {
+              uniqueUsersMap[email] = user;
+            } else if (currentName.isNotEmpty && existingName.isNotEmpty) {
+              // Both have names, prefer the one that's not "Unknown User" or similar
+              if (!currentName.toLowerCase().contains("unknown") &&
+                  existingName.toLowerCase().contains("unknown")) {
+                uniqueUsersMap[email] = user;
+              }
+            }
+          }
+        }
+
+        // Convert back to list and apply search filter
+        final users = uniqueUsersMap.values.where((user) {
           // Apply search filter if search query exists
           if (_searchQuery.isEmpty) return true;
           return user["name"].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
