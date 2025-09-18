@@ -95,11 +95,11 @@ class _AssignExamScreenState extends State<AssignExamScreen> {
       // Send notifications to assigned caregivers
       await _notificationService.sendNotificationToUsers(
         userIds: assignedCaregivers,
-        title: 'New Video Assigned',
-        body: 'A new video "$examTitle" has been assigned to you.',
+        title: 'New Exam Assigned',
+        body: 'A new exam "$examTitle" has been assigned to you.',
         data: {
           'examId': examID,
-          'videoTitle': examTitle,
+          'examTitle': examTitle,
           'type': 'exam_assigned'
         },
       );
