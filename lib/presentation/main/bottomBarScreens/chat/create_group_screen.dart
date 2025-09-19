@@ -106,51 +106,79 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Apply comprehensive user filtering
-                final allUsers = snapshot.data!.docs
-                    .map((doc) => {
-                          ...doc.data() as Map<String, dynamic>,
-                          'uid': doc.id,
-                        })
-                    .toList();
+                // Apply comprehensive user filtering with null safety
+                final allUsers = <Map<String, dynamic>>[];
 
-                debugPrint("Total users found: ${allUsers.length}");
+                for (var doc in snapshot.data!.docs) {
+                  try {
+                    final data = doc.data();
+                    if (data != null) {
+                      final userData = Map<String, dynamic>.from(data as Map<String, dynamic>);
+                      userData['uid'] = doc.id;
+                      allUsers.add(userData);
+                    } else {
+                      debugPrint("Skipping document ${doc.id} with null data");
+                    }
+                  } catch (e) {
+                    debugPrint("Error processing document ${doc.id}: $e");
+                  }
+                }
 
-                final validUsers = allUsers.where((user) {
+                debugPrint("Total valid documents processed: ${allUsers.length}");
+
+                final validUsers = <Map<String, dynamic>>[];
+
+                for (var user in allUsers) {
                   try {
                     // Filter out current user
-                    if (user["uid"] == _auth.currentUser!.uid) return false;
+                    if (user["uid"] == _auth.currentUser!.uid) continue;
 
-                    // More robust null/empty checks
+                    // Strict validation of required fields
                     final name = user["name"];
                     final email = user["email"];
                     final uid = user["uid"];
                     final role = user["role"];
 
-                    // Filter out users with missing or invalid data
+                    // Check if name is valid
                     if (name == null ||
-                        name.toString().trim().isEmpty ||
-                        name.toString().toLowerCase().trim() == "unknown user" ||
-                        email == null ||
-                        email.toString().trim().isEmpty ||
-                        uid == null ||
-                        uid.toString().trim().isEmpty) {
-                      debugPrint("Filtering out user with invalid data: name=$name, email=$email, uid=$uid");
-                      return false;
+                        name is! String ||
+                        name.trim().isEmpty ||
+                        name.toLowerCase().trim() == "unknown user") {
+                      debugPrint("Invalid name: $name for user $uid");
+                      continue;
                     }
 
-                    // Filter out users without a valid role (likely deleted users)
-                    if (role == null || role.toString().trim().isEmpty) {
-                      debugPrint("Filtering out user with no role: name=$name, role=$role");
-                      return false;
+                    // Check if email is valid
+                    if (email == null ||
+                        email is! String ||
+                        email.trim().isEmpty ||
+                        !email.contains('@')) {
+                      debugPrint("Invalid email: $email for user $uid");
+                      continue;
                     }
 
-                    return true;
+                    // Check if uid is valid
+                    if (uid == null ||
+                        uid is! String ||
+                        uid.trim().isEmpty) {
+                      debugPrint("Invalid uid: $uid");
+                      continue;
+                    }
+
+                    // Check if role is valid
+                    if (role == null ||
+                        role is! String ||
+                        role.trim().isEmpty) {
+                      debugPrint("Invalid role: $role for user $name");
+                      continue;
+                    }
+
+                    // User passed all validations
+                    validUsers.add(user);
                   } catch (e) {
-                    debugPrint("Error processing user data: $e");
-                    return false;
+                    debugPrint("Error validating user data: $e");
                   }
-                }).toList();
+                }
 
                 debugPrint("Valid users after filtering: ${validUsers.length}");
 
@@ -161,23 +189,35 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 return ListView.builder(
                   itemCount: validUsers.length,
                   itemBuilder: (context, index) {
-                    var user = validUsers[index];
-                    String userId = user['uid'];
+                    try {
+                      if (index >= validUsers.length) {
+                        return const SizedBox.shrink();
+                      }
 
-                    return CheckboxListTile(
-                      title: Text(user['name']?.toString().trim() ?? 'Unknown User'),
-                      subtitle: Text('${user['role']?.toString().trim() ?? 'No Role'} • ${user['email']?.toString().trim() ?? 'No Email'}'),
-                      value: _selectedUsers.contains(userId),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedUsers.add(userId);
-                          } else {
-                            _selectedUsers.remove(userId);
-                          }
-                        });
-                      },
-                    );
+                      var user = validUsers[index];
+                      String userId = user['uid'] as String;
+                      String userName = user['name'] as String;
+                      String userEmail = user['email'] as String;
+                      String userRole = user['role'] as String;
+
+                      return CheckboxListTile(
+                        title: Text(userName),
+                        subtitle: Text('$userRole • $userEmail'),
+                        value: _selectedUsers.contains(userId),
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedUsers.add(userId);
+                            } else {
+                              _selectedUsers.remove(userId);
+                            }
+                          });
+                        },
+                      );
+                    } catch (e) {
+                      debugPrint("Error building list item at index $index: $e");
+                      return const SizedBox.shrink();
+                    }
                   },
                 );
               },
