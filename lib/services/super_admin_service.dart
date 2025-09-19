@@ -209,4 +209,166 @@ class SuperAdminService {
       // Don't rethrow - logging failure shouldn't stop the operation
     }
   }
+
+  /// One-time migration to convert all "Nurse" roles to "Staff"
+  /// Only Super Admin can run this migration
+  static Future<void> migrateNurseRolesToStaff() async {
+    if (!await isSuperAdmin()) {
+      throw Exception('Unauthorized: Only Super Admin can run role migrations');
+    }
+
+    try {
+      print('🔄 Super Admin starting migration: Converting Nurse roles to Staff...');
+
+      // Log this operation
+      await logSuperAdminOperation('ROLE_MIGRATION', 'Started Nurse to Staff migration');
+
+      // Get all users with "Nurse" role
+      QuerySnapshot nursesQuery = await _firestore
+          .collection('Users')
+          .where('role', isEqualTo: 'Nurse')
+          .get();
+
+      if (nursesQuery.docs.isEmpty) {
+        print('✅ No Nurse roles found. Migration not needed.');
+        await logSuperAdminOperation('ROLE_MIGRATION', 'No Nurse roles found - migration skipped');
+        return;
+      }
+
+      print('📊 Found ${nursesQuery.docs.length} users with Nurse role to migrate');
+
+      int successCount = 0;
+      int errorCount = 0;
+      List<String> updatedUsers = [];
+
+      // Update each nurse to staff role
+      for (QueryDocumentSnapshot doc in nursesQuery.docs) {
+        try {
+          await doc.reference.update({'role': 'Staff'});
+
+          final userData = doc.data() as Map<String, dynamic>;
+          final userName = userData['name'] ?? 'Unknown';
+          final userEmail = userData['email'] ?? 'No email';
+
+          print('✅ Updated user: $userName ($userEmail) from Nurse to Staff');
+          updatedUsers.add('$userName ($userEmail)');
+          successCount++;
+
+        } catch (e) {
+          print('❌ Failed to update user ${doc.id}: $e');
+          errorCount++;
+        }
+      }
+
+      print('🎉 Migration completed!');
+      print('✅ Successfully updated: $successCount users');
+      if (errorCount > 0) {
+        print('❌ Failed to update: $errorCount users');
+      }
+
+      // Log the results
+      final migrationResults = 'Successfully updated $successCount users. Failed: $errorCount users. Updated users: ${updatedUsers.join(', ')}';
+      await logSuperAdminOperation('ROLE_MIGRATION', migrationResults);
+
+      // Update user counts after migration
+      await _updateUserCountsAfterMigration();
+
+    } catch (e) {
+      print('❌ Migration failed with error: $e');
+      await logSuperAdminOperation('ROLE_MIGRATION_ERROR', 'Migration failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Update user counts after role migration
+  static Future<void> _updateUserCountsAfterMigration() async {
+    try {
+      print('🔄 Updating user counts after migration...');
+
+      // Count all users by role
+      QuerySnapshot allUsers = await _firestore.collection('Users').get();
+
+      int staffCount = 0;
+      int caregiverCount = 0;
+      int adminCount = 0;
+
+      for (QueryDocumentSnapshot doc in allUsers.docs) {
+        final userData = doc.data() as Map<String, dynamic>;
+        final role = userData['role']?.toString().toLowerCase() ?? '';
+
+        switch (role) {
+          case 'staff':
+            staffCount++;
+            break;
+          case 'caregiver':
+            caregiverCount++;
+            break;
+          case 'admin':
+            adminCount++;
+            break;
+        }
+      }
+
+      // Update the counts document
+      await _firestore
+          .collection('users_count')
+          .doc('Ki8jsRs1u9Mk05F0g1UL')
+          .update({
+        'nurse': staffCount, // Keep the field name for backward compatibility
+        'caregiver': caregiverCount,
+      });
+
+      print('✅ User counts updated: Staff: $staffCount, Caregivers: $caregiverCount, Admins: $adminCount');
+
+    } catch (e) {
+      print('❌ Failed to update user counts: $e');
+    }
+  }
+
+  /// Verify migration was successful
+  static Future<Map<String, dynamic>> verifyRoleMigration() async {
+    if (!await isSuperAdmin()) {
+      throw Exception('Unauthorized: Only Super Admin can verify migrations');
+    }
+
+    try {
+      print('🔍 Verifying role migration...');
+
+      // Check for any remaining Nurse roles
+      QuerySnapshot remainingNurses = await _firestore
+          .collection('Users')
+          .where('role', isEqualTo: 'Nurse')
+          .get();
+
+      // Count all Staff roles
+      QuerySnapshot staffQuery = await _firestore
+          .collection('Users')
+          .where('role', isEqualTo: 'Staff')
+          .get();
+
+      final result = {
+        'remaining_nurses': remainingNurses.docs.length,
+        'current_staff_count': staffQuery.docs.length,
+        'migration_successful': remainingNurses.docs.isEmpty,
+        'remaining_nurse_users': remainingNurses.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return '${data['name']} (${data['email']})';
+        }).toList(),
+      };
+
+      if (result['migration_successful'] == true) {
+        print('✅ Migration verification successful: No Nurse roles remaining');
+      } else {
+        print('⚠️ Migration incomplete: ${result['remaining_nurses']} Nurse roles still exist');
+      }
+
+      print('📊 Current Staff count: ${result['current_staff_count']}');
+
+      return result;
+
+    } catch (e) {
+      print('❌ Migration verification failed: $e');
+      rethrow;
+    }
+  }
 }

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../../component/appBar/main_app_bar.dart';
 import '../../../../theme/theme_provider.dart';
 import '../../../../utils/app_utils/AppUtils.dart';
+import '../../../../services/super_admin_service.dart';
 import 'components/edit_profile_layout.dart';
 import 'components/settings_field.dart';
 
@@ -148,6 +149,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ]
                                   )
                               ),
+
+                              // Super Admin Migration Tools (Only for j.khinda@ccgrhc.com)
+                              FutureBuilder<bool>(
+                                future: SuperAdminService.isSuperAdmin(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.data == true) {
+                                    return Column(
+                                      children: [
+                                        const SizedBox(height: 20),
+                                        Text('Super Admin Tools', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.red.shade600)),
+                                        const SizedBox(height: 10),
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(color: Colors.red.shade200),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              SettingsField(
+                                                title: 'Migrate Nurse Roles to Staff',
+                                                leadingIcon: Icon(Icons.admin_panel_settings, color: Colors.red.shade600),
+                                                trailing: Icon(Icons.navigate_next, color: Colors.red.shade600),
+                                                onTap: _showMigrationDialog,
+                                                bottomLine: false
+                                              ),
+                                            ]
+                                          )
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
                             ]
                           ),
 
@@ -282,6 +318,142 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     )
     );
+  }
+
+  void _showMigrationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.red.shade600),
+              const SizedBox(width: 8),
+              const Text('Role Migration'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will convert all users with "Nurse" role to "Staff" role.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('This operation:'),
+              Text('• Updates all Nurse users to Staff role'),
+              Text('• Updates user count statistics'),
+              Text('• Creates an audit log'),
+              Text('• Cannot be undone'),
+              SizedBox(height: 12),
+              Text(
+                'Continue with migration?',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _runMigration();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+              ),
+              child: const Text('Run Migration', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _runMigration() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Running migration...'),
+              Text('This may take a few moments.'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await SuperAdminService.migrateNurseRolesToStaff();
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green.shade600),
+                const SizedBox(width: 8),
+                const Text('Migration Completed'),
+              ],
+            ),
+            content: const Text(
+              'All Nurse roles have been successfully converted to Staff roles. '
+              'User counts have been updated.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error, color: Colors.red.shade600),
+                const SizedBox(width: 8),
+                const Text('Migration Failed'),
+              ],
+            ),
+            content: Text('Migration failed: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 }
 
