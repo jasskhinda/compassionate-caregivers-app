@@ -726,7 +726,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             content: const Text(
-              'Duplicate user cleanup has been completed successfully. '\
+              'Duplicate user cleanup has been completed successfully. '
               'Check the console logs for details of what was removed.',
             ),
             actions: [
