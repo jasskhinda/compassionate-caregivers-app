@@ -24,3 +24,34 @@ Future<void> sendAssignedVideoEmail({required String recipientEmail, required St
 
   print(response.body);
 }
+
+Future<void> sendPasswordResetNotificationEmail({
+  required String recipientEmail,
+  required String userName,
+}) async {
+  final url = Uri.parse('https://api.emailjs.com/api/v1.0/email/send');
+  final response = await http.post(
+    url,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: json.encode({
+      'service_id': 'service_c5xsba6',
+      'template_id': 'template_bc8mupd', // Using existing template as fallback
+      'user_id': 'srH_HtWKuCGvEwV3w',
+      'template_params': {
+        'user_email': recipientEmail,
+        'video_title': 'Password Reset Request',
+        'video_body': 'Hi $userName,\n\nYou have requested to reset your password for Compassionate Caregivers app.\n\nA password reset email has been sent to your email address. Please check your email (including spam folder) and follow the instructions to reset your password.\n\nIf you did not request this password reset, please ignore this email or contact support.\n\nThank you,\nCompassionate Caregivers Support Team',
+        'type': 'Password Reset Notification'
+      },
+    })
+  );
+
+  if (response.statusCode == 200) {
+    print('✅ Password reset notification email sent successfully');
+  } else {
+    print('❌ Failed to send password reset notification: ${response.body}');
+    throw Exception('Failed to send password reset notification email');
+  }
+}
