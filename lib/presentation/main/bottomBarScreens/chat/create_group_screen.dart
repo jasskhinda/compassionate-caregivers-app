@@ -114,28 +114,45 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                         })
                     .toList();
 
+                debugPrint("Total users found: ${allUsers.length}");
+
                 final validUsers = allUsers.where((user) {
-                  // Filter out current user
-                  if (user["uid"] == _auth.currentUser!.uid) return false;
-                  
-                  // Filter out users with missing or invalid data
-                  if (user["name"] == null || 
-                      user["name"].toString().isEmpty || 
-                      user["name"].toString().toLowerCase() == "unknown user" ||
-                      user["email"] == null || 
-                      user["email"].toString().isEmpty ||
-                      user["uid"] == null || 
-                      user["uid"].toString().isEmpty) {
+                  try {
+                    // Filter out current user
+                    if (user["uid"] == _auth.currentUser!.uid) return false;
+
+                    // More robust null/empty checks
+                    final name = user["name"];
+                    final email = user["email"];
+                    final uid = user["uid"];
+                    final role = user["role"];
+
+                    // Filter out users with missing or invalid data
+                    if (name == null ||
+                        name.toString().trim().isEmpty ||
+                        name.toString().toLowerCase().trim() == "unknown user" ||
+                        email == null ||
+                        email.toString().trim().isEmpty ||
+                        uid == null ||
+                        uid.toString().trim().isEmpty) {
+                      debugPrint("Filtering out user with invalid data: name=$name, email=$email, uid=$uid");
+                      return false;
+                    }
+
+                    // Filter out users without a valid role (likely deleted users)
+                    if (role == null || role.toString().trim().isEmpty) {
+                      debugPrint("Filtering out user with no role: name=$name, role=$role");
+                      return false;
+                    }
+
+                    return true;
+                  } catch (e) {
+                    debugPrint("Error processing user data: $e");
                     return false;
                   }
-                  
-                  // Filter out users without a valid role (likely deleted users)
-                  if (user["role"] == null || user["role"].toString().isEmpty) {
-                    return false;
-                  }
-                  
-                  return true;
                 }).toList();
+
+                debugPrint("Valid users after filtering: ${validUsers.length}");
 
                 if (validUsers.isEmpty) {
                   return const Center(child: Text('No users available to add to group'));
@@ -148,8 +165,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     String userId = user['uid'];
 
                     return CheckboxListTile(
-                      title: Text(user['name'] ?? 'Unknown User'),
-                      subtitle: Text('${user['role'] ?? 'No Role'} • ${user['email'] ?? 'No Email'}'),
+                      title: Text(user['name']?.toString().trim() ?? 'Unknown User'),
+                      subtitle: Text('${user['role']?.toString().trim() ?? 'No Role'} • ${user['email']?.toString().trim() ?? 'No Email'}'),
                       value: _selectedUsers.contains(userId),
                       onChanged: (bool? value) {
                         setState(() {
