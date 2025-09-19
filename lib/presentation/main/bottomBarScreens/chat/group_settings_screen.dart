@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/services/user_validation_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
 class GroupSettingsScreen extends StatefulWidget {
@@ -95,27 +96,13 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                           ),
                         ),
                         ...snapshot.data!.docs.where((doc) {
-                          try {
-                            final data = doc.data();
-                            if (data == null) return false;
-                            final userData = data as Map<String, dynamic>;
-                            final name = userData['name'];
-                            final email = userData['email'];
-                            final role = userData['role'];
-
-                            // Only include valid users
-                            return name != null && name is String && name.trim().isNotEmpty &&
-                                   email != null && email is String && email.trim().isNotEmpty &&
-                                   role != null && role is String && role.trim().isNotEmpty;
-                          } catch (e) {
-                            return false;
-                          }
+                          return UserValidationService.isValidUserDocument(doc);
                         }).map((doc) {
-                          final userData = doc.data() as Map<String, dynamic>;
+                          final displayInfo = UserValidationService.getUserDisplayInfoFromDoc(doc);
                           return ListTile(
-                            title: Text(userData['name'] ?? ''),
-                            subtitle: Text('${userData['email'] ?? ''}\n${userData['role'] ?? ''}'),
-                            trailing: _userRole == 'Admin' && userData['role'] != 'Admin'
+                            title: Text(displayInfo['name']!),
+                            subtitle: Text('${displayInfo['email']!}\n${displayInfo['role']!}'),
+                            trailing: _userRole == 'Admin' && displayInfo['role'] != 'Admin'
                                 ? IconButton(
                                     icon: Icon(Icons.remove_circle_outline),
                                     onPressed: () => _removeMember(doc.id),
@@ -156,10 +143,8 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
         title: Text('Add Members'),
         content: SizedBox(
           width: double.maxFinite,
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('Users')
-                .snapshots(),
+          child: StreamBuilder<List<QueryDocumentSnapshot>>(
+            stream: UserValidationService.getAllValidUsersStream(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return Center(child: CircularProgressIndicator());
@@ -167,71 +152,17 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
 
               return StatefulBuilder(
                 builder: (context, setState) {
-                  // Filter out invalid users
-                  final validUsers = <QueryDocumentSnapshot>[];
-                  int totalProcessed = 0;
-                  int invalidCount = 0;
-
-                  for (final doc in snapshot.data!.docs) {
-                    totalProcessed++;
-                    try {
-                      final data = doc.data();
-                      if (data != null) {
-                        final userData = data as Map<String, dynamic>;
-
-                        // Check for required fields
-                        final name = userData['name'];
-                        final email = userData['email'];
-                        final role = userData['role'];
-
-                        // Validate name
-                        if (name == null || (name is! String) || name.trim().isEmpty) {
-                          print('Invalid name: $name for user ${doc.id}');
-                          invalidCount++;
-                          continue;
-                        }
-
-                        // Validate email
-                        if (email == null || (email is! String) || email.trim().isEmpty) {
-                          print('Invalid email: $email for user ${doc.id}');
-                          invalidCount++;
-                          continue;
-                        }
-
-                        // Validate role
-                        if (role == null || (role is! String) || role.trim().isEmpty) {
-                          print('Invalid role: $role for user ${doc.id}');
-                          invalidCount++;
-                          continue;
-                        }
-
-                        // All validations passed
-                        validUsers.add(doc);
-                      } else {
-                        print('Null data for user ${doc.id}');
-                        invalidCount++;
-                      }
-                    } catch (e) {
-                      print('Error processing user ${doc.id}: $e');
-                      invalidCount++;
-                    }
-                  }
-
-                  print('Total valid documents processed: $totalProcessed');
-                  if (invalidCount > 0) {
-                    print('Filtered out $invalidCount invalid users');
-                  }
-                  print('Valid users after filtering: ${validUsers.length}');
+                  final validUsers = snapshot.data!;
 
                   return ListView(
                     shrinkWrap: true,
                     children: validUsers.map((doc) {
-                      final userData = doc.data() as Map<String, dynamic>;
+                      final displayInfo = UserValidationService.getUserDisplayInfoFromDoc(doc);
                       final bool isSelected = selectedUsers.contains(doc.id);
 
                       return CheckboxListTile(
-                        title: Text(userData['name'] ?? ''),
-                        subtitle: Text('${userData['email'] ?? ''}\n${userData['role'] ?? ''}'),
+                        title: Text(displayInfo['name']!),
+                        subtitle: Text('${displayInfo['email']!}\n${displayInfo['role']!}'),
                         value: isSelected,
                         onChanged: (bool? value) {
                           setState(() {

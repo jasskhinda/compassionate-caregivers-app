@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'user_validation_service.dart';
 
 class UserServices {
   // Get instance of firestore, auth & functions
@@ -11,11 +12,12 @@ class UserServices {
 
   // Get staff stream
   Stream<List<Map<String, dynamic>>> getStaffStream() {
-    return _firestore.collection("Users").snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => doc.data()) // Extract user data
-          .where((user) => user['role'] == 'Staff') // Filter staff only
-          .toList();
+    return UserValidationService.getValidUsersByRoleStream('Staff').map((docs) {
+      return docs.map((doc) {
+        final userData = doc.data() as Map<String, dynamic>;
+        userData['uid'] = doc.id; // Add UID for backward compatibility
+        return userData;
+      }).toList();
     });
   }
 
@@ -26,11 +28,12 @@ class UserServices {
 
   // Get caregiver stream
   Stream<List<Map<String, dynamic>>> getCaregiverStream() {
-    return _firestore.collection("Users").snapshots().map((snapshot) {
-      return snapshot.docs
-          .map((doc) => doc.data()) // Extract user data
-          .where((user) => user['role'] == 'Caregiver') // Filter only caregivers
-          .toList();
+    return UserValidationService.getValidUsersByRoleStream('Caregiver').map((docs) {
+      return docs.map((doc) {
+        final userData = doc.data() as Map<String, dynamic>;
+        userData['uid'] = doc.id; // Add UID for backward compatibility
+        return userData;
+      }).toList();
     });
   }
 

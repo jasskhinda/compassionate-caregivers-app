@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/services/user_validation_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'chat_screen.dart';
 
@@ -95,8 +96,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('Users').snapshots(),
+            child: StreamBuilder<List<QueryDocumentSnapshot>>(
+              stream: UserValidationService.getAllValidUsersStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -106,99 +107,30 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Apply comprehensive user filtering with null safety
-                final allUsers = <Map<String, dynamic>>[];
+                // Get valid users and filter out current user
+                final validUserDocs = snapshot.data ?? [];
+                final filteredUsers = validUserDocs.where(
+                  (doc) => doc.id != _auth.currentUser!.uid
+                ).toList();
 
-                for (var doc in snapshot.data!.docs) {
-                  try {
-                    final data = doc.data();
-                    if (data != null) {
-                      final userData = Map<String, dynamic>.from(data as Map<String, dynamic>);
-                      userData['uid'] = doc.id;
-                      allUsers.add(userData);
-                    } else {
-                      debugPrint("Skipping document ${doc.id} with null data");
-                    }
-                  } catch (e) {
-                    debugPrint("Error processing document ${doc.id}: $e");
-                  }
-                }
-
-                debugPrint("Total valid documents processed: ${allUsers.length}");
-
-                final validUsers = <Map<String, dynamic>>[];
-
-                for (var user in allUsers) {
-                  try {
-                    // Filter out current user
-                    if (user["uid"] == _auth.currentUser!.uid) continue;
-
-                    // Strict validation of required fields
-                    final name = user["name"];
-                    final email = user["email"];
-                    final uid = user["uid"];
-                    final role = user["role"];
-
-                    // Check if name is valid
-                    if (name == null ||
-                        name is! String ||
-                        name.trim().isEmpty ||
-                        name.toLowerCase().trim() == "unknown user") {
-                      debugPrint("Invalid name: $name for user $uid");
-                      continue;
-                    }
-
-                    // Check if email is valid
-                    if (email == null ||
-                        email is! String ||
-                        email.trim().isEmpty ||
-                        !email.contains('@')) {
-                      debugPrint("Invalid email: $email for user $uid");
-                      continue;
-                    }
-
-                    // Check if uid is valid
-                    if (uid == null ||
-                        uid is! String ||
-                        uid.trim().isEmpty) {
-                      debugPrint("Invalid uid: $uid");
-                      continue;
-                    }
-
-                    // Check if role is valid
-                    if (role == null ||
-                        role is! String ||
-                        role.trim().isEmpty) {
-                      debugPrint("Invalid role: $role for user $name");
-                      continue;
-                    }
-
-                    // User passed all validations
-                    validUsers.add(user);
-                  } catch (e) {
-                    debugPrint("Error validating user data: $e");
-                  }
-                }
-
-                debugPrint("Valid users after filtering: ${validUsers.length}");
-
-                if (validUsers.isEmpty) {
+                if (filteredUsers.isEmpty) {
                   return const Center(child: Text('No users available to add to group'));
                 }
 
                 return ListView.builder(
-                  itemCount: validUsers.length,
+                  itemCount: filteredUsers.length,
                   itemBuilder: (context, index) {
                     try {
-                      if (index >= validUsers.length) {
+                      if (index >= filteredUsers.length) {
                         return const SizedBox.shrink();
                       }
 
-                      var user = validUsers[index];
-                      String userId = user['uid'] as String;
-                      String userName = user['name'] as String;
-                      String userEmail = user['email'] as String;
-                      String userRole = user['role'] as String;
+                      final userDoc = filteredUsers[index];
+                      final displayInfo = UserValidationService.getUserDisplayInfoFromDoc(userDoc);
+                      String userId = userDoc.id;
+                      String userName = displayInfo['name']!;
+                      String userEmail = displayInfo['email']!;
+                      String userRole = displayInfo['role']!;
 
                       return CheckboxListTile(
                         title: Text(userName),
