@@ -114,7 +114,7 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
               ),
 
               // Add Members Button
-              if (_userRole == 'Admin' || _userRole == 'Nurse')
+              if (_userRole == 'Admin' || _userRole == 'Staff')
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: ElevatedButton(

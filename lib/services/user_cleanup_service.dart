@@ -126,7 +126,7 @@ class UserCleanupService {
 
     // Prefer documents with valid roles
     final role = data['role']?.toString() ?? '';
-    if (['Admin', 'Nurse', 'Caregiver'].contains(role)) {
+    if (['Admin', 'Staff', 'Caregiver'].contains(role)) {
       score += 5;
     }
 

@@ -86,7 +86,7 @@ class TermsContent extends StatelessWidget {
                 "Website: https://compassionatecaregivershc.com/"),
 
             sectionHeading("\n1. Overview"),
-            sectionText("This Privacy Policy describes how Compassionate Caregivers Home Care (\"Company,\" \"we,\" \"our,\" or \"us\") collects, uses, and protects information when you use our Compassionate Caregivers Training mobile application (\"App\"). This policy applies to all users of the App, including administrators, nurses, and caregivers.\nBy using our App, you consent to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, do not download, register with, or use this App."),
+            sectionText("This Privacy Policy describes how Compassionate Caregivers Home Care (\"Company,\" \"we,\" \"our,\" or \"us\") collects, uses, and protects information when you use our Compassionate Caregivers Training mobile application (\"App\"). This policy applies to all users of the App, including administrators, staff, and caregivers.\nBy using our App, you consent to the collection and use of information in accordance with this policy. If you do not agree with our policies and practices, do not download, register with, or use this App."),
 
             sectionHeading("\n2. Information We Collect"),
             sectionTitle("2.1 Personal Information"),
@@ -105,7 +105,7 @@ class TermsContent extends StatelessWidget {
 
             sectionTitle("2.3 Content Data"),
             sectionSubTitle("Uploaded Content:"),
-            sectionText("• Training videos uploaded by administrators and nurses\n• Comments and feedback on training materials\n• Assessment responses and explanations"),
+            sectionText("• Training videos uploaded by administrators and staff\n• Comments and feedback on training materials\n• Assessment responses and explanations"),
 
             sectionSubTitle("Assignment Data:"),
             sectionText("• Training assignments and deadlines\n• Competency requirements and completion status\n• Performance evaluations and improvement plans"),

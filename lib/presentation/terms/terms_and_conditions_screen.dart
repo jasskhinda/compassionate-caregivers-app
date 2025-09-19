@@ -102,7 +102,7 @@ class TermsContent extends StatelessWidget {
                       text: 'Full system access, user management, content creation and assignment\n',
                     ),
                     TextSpan(
-                      text: 'Tier 2 - Nurses: ',
+                      text: 'Tier 2 - Staff: ',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(

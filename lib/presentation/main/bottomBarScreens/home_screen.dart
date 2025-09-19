@@ -35,7 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final UserServices _userServices = UserServices();
 
   // User count
-  int? _nurse;
+  int? _staff;
   int? _caregiver;
   bool _isLoading = true;
 
@@ -54,14 +54,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (data != null) {
         setState(() {
-          _nurse = data['nurse'] ?? 0;
+          _staff = data['nurse'] ?? 0;
           _caregiver = data['caregiver'] ?? 0;
           _isLoading = false;
         });
-        debugPrint('User count loaded: nurse=$_nurse, caregiver=$_caregiver');
+        debugPrint('User count loaded: staff=$_staff, caregiver=$_caregiver');
       } else {
         setState(() {
-          _nurse = 0;
+          _staff = 0;
           _caregiver = 0;
           _isLoading = false;
         });
@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _nurse = 0;
+        _staff = 0;
         _caregiver = 0;
         _isLoading = false;
       });
@@ -215,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               optionOneIcon: Icons.health_and_safety,
                               optionTwoTitle: 'Caregiver',
                               optionTwoIcon: Icons.person,
-                              optionOneCount: _nurse.toString(),
+                              optionOneCount: _staff.toString(),
                               optionTwoCount: _caregiver.toString(),
                               optionOneOnTap: () => Navigator.pushNamed(context, AppRoutes.allStaffUserScreen),
                               optionTwoOnTap: () => Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen),

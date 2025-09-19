@@ -107,8 +107,8 @@ class SuperAdminService {
           ...doc.data(),
         };
       }).toList()..sort((a, b) {
-        // Sort by role first (Admin, Staff/Nurse, Caregiver), then by name
-        final roleOrder = {'Admin': 0, 'Staff': 1, 'Nurse': 1, 'Caregiver': 2};
+        // Sort by role first (Admin, Staff, Caregiver), then by name
+        final roleOrder = {'Admin': 0, 'Staff': 1, 'Caregiver': 2};
         final roleA = roleOrder[a['role']] ?? 3;
         final roleB = roleOrder[b['role']] ?? 3;
 
@@ -177,7 +177,7 @@ class SuperAdminService {
     try {
       final countDoc = _firestore.collection('users_count').doc('Ki8jsRs1u9Mk05F0g1UL');
 
-      if (role.toLowerCase() == 'staff' || role.toLowerCase() == 'nurse') {
+      if (role.toLowerCase() == 'staff') {
         await countDoc.update({
           'nurse': FieldValue.increment(change),
         });

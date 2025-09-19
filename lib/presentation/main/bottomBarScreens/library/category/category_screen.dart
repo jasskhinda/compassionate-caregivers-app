@@ -104,7 +104,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         if (_role == 'Caregiver')
                           _assignedVideos(),
 
-                        // Caregivers name list(only for admin & nurse)
+                        // Caregivers name list(only for admin & staff)
                         if (_role != 'Caregiver')
                           const CaregiverList(),
 

@@ -9,12 +9,12 @@ class UserServices {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFunctions _functions = FirebaseFunctions.instance;
 
-  // Get staff stream (formerly nurse stream) - includes both Staff and Nurse roles
+  // Get staff stream
   Stream<List<Map<String, dynamic>>> getStaffStream() {
     return _firestore.collection("Users").snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) => doc.data()) // Extract user data
-          .where((user) => user['role'] == 'Staff' || user['role'] == 'Nurse') // Filter both staff and nurse
+          .where((user) => user['role'] == 'Staff') // Filter staff only
           .toList();
     });
   }
@@ -24,12 +24,12 @@ class UserServices {
     return getStaffStream();
   }
 
-  // Get nurse stream
+  // Get caregiver stream
   Stream<List<Map<String, dynamic>>> getCaregiverStream() {
     return _firestore.collection("Users").snapshots().map((snapshot) {
       return snapshot.docs
           .map((doc) => doc.data()) // Extract user data
-          .where((user) => user['role'] == 'Caregiver') // Filter only nurses
+          .where((user) => user['role'] == 'Caregiver') // Filter only caregivers
           .toList();
     });
   }
@@ -102,13 +102,13 @@ class UserServices {
     }
   }
 
-  Future<void> deleteNurseUser(String userId) async {
+  Future<void> deleteStaffUser(String userId) async {
     try {
-      // Call Cloud Function to delete nurse user
-      await deleteUser(userId, 'Nurse');
+      // Call Cloud Function to delete staff user
+      await deleteUser(userId, 'Staff');
 
     } catch (e) {
-      print('❌ Error deleting nurse user: $e');
+      print('❌ Error deleting staff user: $e');
       rethrow;
     }
   }
@@ -173,7 +173,7 @@ class UserServices {
       final result = await callable.call();
 
       print("✅ User counts synced via Cloud Function: ${result.data['message']}");
-      print("Nurses: ${result.data['nurseCount']}, Caregivers: ${result.data['caregiverCount']}");
+      print("Staff: ${result.data['nurseCount']}, Caregivers: ${result.data['caregiverCount']}");
 
     } catch (e) {
       print('❌ Error calling Cloud Function for sync, using fallback: $e');
@@ -188,7 +188,7 @@ class UserServices {
       // Get all users from Firestore
       QuerySnapshot usersSnapshot = await _firestore.collection('Users').get();
 
-      int nurseCount = 0;
+      int staffCount = 0;
       int caregiverCount = 0;
 
       // Count actual users by role
@@ -197,8 +197,8 @@ class UserServices {
         String role = userData['role'] ?? '';
 
         switch (role.toLowerCase()) {
-          case 'nurse':
-            nurseCount++;
+          case 'staff':
+            staffCount++;
             break;
           case 'caregiver':
             caregiverCount++;
@@ -211,11 +211,11 @@ class UserServices {
           .collection('users_count')
           .doc('Ki8jsRs1u9Mk05F0g1UL')
           .update({
-        'nurse': nurseCount,
+        'nurse': staffCount,
         'caregiver': caregiverCount,
       });
 
-      print("✅ User counts synced (fallback): Nurses: $nurseCount, Caregivers: $caregiverCount");
+      print("✅ User counts synced (fallback): Staff: $staffCount, Caregivers: $caregiverCount");
     } catch (e) {
       print('❌ Error syncing user counts: $e');
       rethrow;

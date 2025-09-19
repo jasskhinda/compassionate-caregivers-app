@@ -151,7 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ]
                           ),
 
-                        // Assigned Learning (For Caretakers & Nurses)
+                        // Assigned Learning (For Caretakers & Staff)
                         if (_role == 'Caregiver')
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
