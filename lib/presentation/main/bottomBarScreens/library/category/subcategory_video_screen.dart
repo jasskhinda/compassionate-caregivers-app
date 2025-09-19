@@ -501,26 +501,50 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                                   .doc(videoId)
                                   .get();
 
-                              final assignedCaregivers = videoDoc.data()?['assignedTo'] as List<dynamic>? ?? [];
+                              List<dynamic> assignedCaregivers = [];
+
+                              if (videoDoc.exists) {
+                                assignedCaregivers = videoDoc.data()?['assignedTo'] as List<dynamic>? ?? [];
+                              }
 
                               // Delete from each caregiver's video collection
                               for (String caregiverId in assignedCaregivers) {
-                                await FirebaseFirestore.instance
-                                    .collection('caregiver_videos')
-                                    .doc(caregiverId)
-                                    .collection('videos')
-                                    .doc(videoId)
-                                    .delete();
+                                try {
+                                  await FirebaseFirestore.instance
+                                      .collection('caregiver_videos')
+                                      .doc(caregiverId)
+                                      .collection('videos')
+                                      .doc(videoId)
+                                      .delete();
+                                } catch (e) {
+                                  print('Error deleting caregiver video for $caregiverId: $e');
+                                  // Continue with other caregivers even if one fails
+                                }
                               }
 
                               // Update assigned_video count in Users collection
                               for (String caregiverId in assignedCaregivers) {
-                                await FirebaseFirestore.instance
-                                    .collection('Users')
-                                    .doc(caregiverId)
-                                    .update({
-                                  'assigned_video': FieldValue.increment(-1),
-                                });
+                                try {
+                                  // Check if the user document exists before updating
+                                  final userDoc = await FirebaseFirestore.instance
+                                      .collection('Users')
+                                      .doc(caregiverId)
+                                      .get();
+
+                                  if (userDoc.exists) {
+                                    await FirebaseFirestore.instance
+                                        .collection('Users')
+                                        .doc(caregiverId)
+                                        .update({
+                                      'assigned_video': FieldValue.increment(-1),
+                                    });
+                                  } else {
+                                    print('User document not found for caregiver: $caregiverId');
+                                  }
+                                } catch (e) {
+                                  print('Error updating user count for caregiver $caregiverId: $e');
+                                  // Continue with other caregivers even if one fails
+                                }
                               }
 
                               // Delete from categories collection
