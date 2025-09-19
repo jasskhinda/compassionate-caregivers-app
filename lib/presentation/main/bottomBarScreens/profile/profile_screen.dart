@@ -173,6 +173,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                 leadingIcon: Icon(Icons.admin_panel_settings, color: Colors.red.shade600),
                                                 trailing: Icon(Icons.navigate_next, color: Colors.red.shade600),
                                                 onTap: _showMigrationDialog,
+                                                bottomLine: true
+                                              ),
+                                              SettingsField(
+                                                title: 'Check for Duplicate Users',
+                                                leadingIcon: Icon(Icons.find_in_page, color: Colors.red.shade600),
+                                                trailing: Icon(Icons.navigate_next, color: Colors.red.shade600),
+                                                onTap: _showDuplicateCheckDialog,
+                                                bottomLine: true
+                                              ),
+                                              SettingsField(
+                                                title: 'Clean Up Duplicate Users',
+                                                leadingIcon: Icon(Icons.cleaning_services, color: Colors.red.shade600),
+                                                trailing: Icon(Icons.navigate_next, color: Colors.red.shade600),
+                                                onTap: _showDuplicateCleanupDialog,
                                                 bottomLine: false
                                               ),
                                             ]
@@ -444,6 +458,304 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             content: Text('Migration failed: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _showDuplicateCheckDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.find_in_page, color: Colors.blue.shade600),
+              const SizedBox(width: 8),
+              const Text('Check for Duplicate Users'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will scan all user documents and identify duplicates.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('This operation will:'),
+              Text('• Check all user documents in Firestore'),
+              Text('• Identify users with duplicate email addresses'),
+              Text('• Generate a report of found duplicates'),
+              Text('• Does not modify any data'),
+              SizedBox(height: 12),
+              Text(
+                'Continue with duplicate check?',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _runDuplicateCheck();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+              ),
+              child: const Text('Check Duplicates', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _runDuplicateCheck() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Checking for duplicates...'),
+              Text('This may take a few moments.'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      final result = await SuperAdminService.identifyDuplicateUsers();
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      final duplicateEmails = result['duplicate_emails'] as int;
+      final extraDocuments = result['extra_documents'] as int;
+
+      // Show results dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  duplicateEmails > 0 ? Icons.warning : Icons.check_circle,
+                  color: duplicateEmails > 0 ? Colors.orange.shade600 : Colors.green.shade600,
+                ),
+                const SizedBox(width: 8),
+                const Text('Duplicate Check Results'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total users: ${result['total_users']}'),
+                Text('Unique emails: ${result['unique_emails']}'),
+                Text('Duplicate emails: $duplicateEmails'),
+                Text('Extra documents: $extraDocuments'),
+                if (duplicateEmails > 0) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Found $duplicateEmails emails with duplicate documents that can be cleaned up.',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'No duplicate users found! Database is clean.',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error, color: Colors.red.shade600),
+                const SizedBox(width: 8),
+                const Text('Check Failed'),
+              ],
+            ),
+            content: Text('Duplicate check failed: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _showDuplicateCleanupDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.cleaning_services, color: Colors.red.shade600),
+              const SizedBox(width: 8),
+              const Text('Clean Up Duplicate Users'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will permanently delete duplicate user documents.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('This operation will:'),
+              Text('• Find all duplicate user documents'),
+              Text('• Keep the most recent document for each email'),
+              Text('• Permanently delete extra documents'),
+              Text('• Create an audit log of deletions'),
+              Text('• Cannot be undone'),
+              SizedBox(height: 12),
+              Text(
+                'Continue with cleanup?',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _runDuplicateCleanup();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade600,
+              ),
+              child: const Text('Clean Up Duplicates', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _runDuplicateCleanup() async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Cleaning up duplicates...'),
+              Text('This may take a few moments.'),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      await SuperAdminService.cleanupDuplicateUsers();
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show success dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green.shade600),
+                const SizedBox(width: 8),
+                const Text('Cleanup Completed'),
+              ],
+            ),
+            content: const Text(
+              'Duplicate user cleanup has been completed successfully. '\
+              'Check the console logs for details of what was removed.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error, color: Colors.red.shade600),
+                const SizedBox(width: 8),
+                const Text('Cleanup Failed'),
+              ],
+            ),
+            content: Text('Duplicate cleanup failed: $e'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),

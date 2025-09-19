@@ -101,12 +101,28 @@ class SuperAdminService {
         .collection('Users')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
+      // First map all documents
+      List<Map<String, dynamic>> allUsers = snapshot.docs.map((doc) {
         return {
           'uid': doc.id,
           ...doc.data(),
         };
-      }).toList()..sort((a, b) {
+      }).toList();
+
+      // Deduplicate users by email (keep the most recently created document)
+      Map<String, Map<String, dynamic>> uniqueUsers = {};
+      for (var user in allUsers) {
+        final email = user['email']?.toString().toLowerCase();
+        if (email != null && email.isNotEmpty) {
+          // If this email exists, keep the one with more recent creation or longer uid
+          if (!uniqueUsers.containsKey(email) ||
+              (user['uid']?.toString().length ?? 0) > (uniqueUsers[email]?['uid']?.toString().length ?? 0)) {
+            uniqueUsers[email] = user;
+          }
+        }
+      }
+
+      return uniqueUsers.values.toList()..sort((a, b) {
         // Sort by role first (Admin, Staff, Caregiver), then by name
         final roleOrder = {'Admin': 0, 'Staff': 1, 'Caregiver': 2};
         final roleA = roleOrder[a['role']] ?? 3;
@@ -368,6 +384,132 @@ class SuperAdminService {
 
     } catch (e) {
       print('❌ Migration verification failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Identify and report duplicate user documents
+  /// Only Super Admin can run this operation
+  static Future<Map<String, dynamic>> identifyDuplicateUsers() async {
+    if (!await isSuperAdmin()) {
+      throw Exception('Unauthorized: Only Super Admin can identify duplicates');
+    }
+
+    try {
+      print('🔍 Identifying duplicate user documents...');
+
+      QuerySnapshot allUsers = await _firestore.collection('Users').get();
+
+      Map<String, List<Map<String, dynamic>>> emailGroups = {};
+
+      // Group users by email
+      for (QueryDocumentSnapshot doc in allUsers.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final email = data['email']?.toString().toLowerCase();
+
+        if (email != null && email.isNotEmpty) {
+          if (!emailGroups.containsKey(email)) {
+            emailGroups[email] = [];
+          }
+          emailGroups[email]!.add({
+            'uid': doc.id,
+            'name': data['name'],
+            'email': data['email'],
+            'role': data['role'],
+          });
+        }
+      }
+
+      // Find duplicates
+      Map<String, List<Map<String, dynamic>>> duplicates = {};
+      int totalDuplicates = 0;
+
+      for (String email in emailGroups.keys) {
+        if (emailGroups[email]!.length > 1) {
+          duplicates[email] = emailGroups[email]!;
+          totalDuplicates += emailGroups[email]!.length - 1; // -1 because one is original
+        }
+      }
+
+      final result = {
+        'total_users': allUsers.docs.length,
+        'unique_emails': emailGroups.keys.length,
+        'duplicate_emails': duplicates.keys.length,
+        'extra_documents': totalDuplicates,
+        'duplicates': duplicates,
+      };
+
+      if (duplicates.isEmpty) {
+        print('✅ No duplicate user documents found');
+      } else {
+        print('⚠️ Found ${duplicates.keys.length} emails with duplicate documents');
+        print('📊 Total extra documents: $totalDuplicates');
+
+        for (String email in duplicates.keys) {
+          print('  📧 $email has ${duplicates[email]!.length} documents');
+        }
+      }
+
+      await logSuperAdminOperation('DUPLICATE_CHECK', 'Checked for duplicate users - found ${duplicates.keys.length} duplicate emails');
+
+      return result;
+
+    } catch (e) {
+      print('❌ Duplicate identification failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Clean up duplicate user documents (keeps the one with longest UID)
+  /// Only Super Admin can run this operation
+  static Future<void> cleanupDuplicateUsers() async {
+    if (!await isSuperAdmin()) {
+      throw Exception('Unauthorized: Only Super Admin can cleanup duplicates');
+    }
+
+    try {
+      print('🧹 Starting duplicate user cleanup...');
+
+      // First identify duplicates
+      final duplicateInfo = await identifyDuplicateUsers();
+      final duplicates = duplicateInfo['duplicates'] as Map<String, List<Map<String, dynamic>>>;
+
+      if (duplicates.isEmpty) {
+        print('✅ No duplicates to clean up');
+        return;
+      }
+
+      int deletedCount = 0;
+      List<String> deletedDocuments = [];
+
+      for (String email in duplicates.keys) {
+        final userDocs = duplicates[email]!;
+
+        // Sort by UID length (longer UIDs are usually newer)
+        userDocs.sort((a, b) => (b['uid']?.toString().length ?? 0).compareTo(a['uid']?.toString().length ?? 0));
+
+        // Keep the first one (longest UID), delete the rest
+        for (int i = 1; i < userDocs.length; i++) {
+          final docToDelete = userDocs[i];
+          try {
+            await _firestore.collection('Users').doc(docToDelete['uid']).delete();
+            deletedCount++;
+            deletedDocuments.add('${docToDelete['name']} (${docToDelete['email']}) - UID: ${docToDelete['uid']}');
+            print('🗑️ Deleted duplicate: ${docToDelete['name']} (${docToDelete['email']})');
+          } catch (e) {
+            print('❌ Failed to delete duplicate ${docToDelete['uid']}: $e');
+          }
+        }
+      }
+
+      print('🎉 Cleanup completed!');
+      print('✅ Deleted $deletedCount duplicate documents');
+
+      await logSuperAdminOperation('DUPLICATE_CLEANUP', 'Cleaned up $deletedCount duplicate user documents: ${deletedDocuments.join(', ')}');
+
+    } catch (e) {
+      print('❌ Duplicate cleanup failed: $e');
+      await logSuperAdminOperation('DUPLICATE_CLEANUP_ERROR', 'Cleanup failed: $e');
       rethrow;
     }
   }
