@@ -177,6 +177,14 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                   icon: Icons.people,
                                   onPressed: () => Navigator.pushNamed(context, AppRoutes.allUsersScreen),
                                 ),
+                                const SizedBox(height: 12),
+                                IconBasicButton(
+                                  text: 'Night Shift Alerts',
+                                  buttonColor: Colors.orange.shade600,
+                                  textColor: Colors.white,
+                                  icon: Icons.nightlight_round,
+                                  onPressed: () => Navigator.pushNamed(context, AppRoutes.nightShiftAlertsScreen)
+                                ),
                               ],
                             ),
                           ),
