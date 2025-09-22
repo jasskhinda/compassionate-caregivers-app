@@ -3,12 +3,12 @@ const MANIFEST = 'flutter-app-manifest';
 const TEMP = 'flutter-temp-cache';
 const CACHE_NAME = 'flutter-app-cache';
 
-const RESOURCES = {"flutter_bootstrap.js": "0a1a6b24850d7be9f226fbd03ae0a464",
+const RESOURCES = {"flutter_bootstrap.js": "39e39a74efc7d9539971e29f77b4bb7f",
 "version.json": "c83c68d79c68cae67e2f9e0b10c504b3",
 "index.html": "0cbcb8d1c616a2bbc332f471738c0246",
 "/": "0cbcb8d1c616a2bbc332f471738c0246",
 "firebase-messaging-sw.js": "3d48a149959eae2746b1ea3cb45fec19",
-"main.dart.js": "7c29605c23c0f947bf1b47e5d99bffd2",
+"main.dart.js": "74cf10851491be7ce37ab5610b8cb682",
 "404.html": "d41d8cd98f00b204e9800998ecf8427e",
 "flutter.js": "888483df48293866f9f41d3d9274a779",
 "reset-password.html": "2040736c7d4d6adcc2c298d12adc05ed",
@@ -38,7 +38,7 @@ const RESOURCES = {"flutter_bootstrap.js": "0a1a6b24850d7be9f226fbd03ae0a464",
 "assets/packages/flutter_inappwebview/assets/t_rex_runner/t-rex.html": "16911fcc170c8af1c5457940bd0bf055",
 "assets/shaders/ink_sparkle.frag": "ecc85a2e95f5e9f53123dcaf8cb9b6ce",
 "assets/AssetManifest.bin": "1bfbcda36cb13626bc335e3ee596b8bb",
-"assets/fonts/MaterialIcons-Regular.otf": "c0e971ffbce8cee248a62b73503faba9",
+"assets/fonts/MaterialIcons-Regular.otf": "bca5c2bb8d0d69d7acbea6f7ba08fbae",
 "assets/assets/images/not_found.webp": "0fe2af3e52a66a5c6c11f58d1030217c",
 "assets/assets/images/logo.json": "8d65789b671b2b5b1dd05fbbe6ee29b6",
 "assets/assets/images/login_page_back.jpg": "b2007feebf1af2c6a758fc685d9cdcb3",
