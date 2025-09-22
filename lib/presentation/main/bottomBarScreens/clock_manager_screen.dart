@@ -46,10 +46,10 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // Simple query without orderBy to avoid index requirement
       final attendanceQuery = await FirebaseFirestore.instance
           .collection('attendance')
           .where('user_id', isEqualTo: user.uid)
-          .orderBy('clock_in_time', descending: true)
           .limit(10)
           .get();
 
@@ -65,6 +65,16 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
           'clock_out_type': data['clock_out_type'],
         });
       }
+
+      // Sort by clock_in_time in descending order (most recent first)
+      activity.sort((a, b) {
+        final aTime = a['clock_in_time'] as Timestamp?;
+        final bTime = b['clock_in_time'] as Timestamp?;
+        if (aTime == null && bTime == null) return 0;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return bTime.compareTo(aTime);
+      });
 
       setState(() => _recentActivity = activity);
     } catch (e) {

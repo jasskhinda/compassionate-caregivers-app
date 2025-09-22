@@ -147,7 +147,7 @@ class _NavDrawerState extends State<NavDrawer> {
             if (_userRole == 'Caregiver')
               _buildListTile(
                 index: 5,
-                icon: widget.selectedIndex == 5 ? Icons.access_time : Icons.access_time_outlined,
+                icon: widget.selectedIndex == 5 ? Icons.schedule : Icons.schedule_outlined,
                 text: 'Clock Manager',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,
