@@ -111,7 +111,7 @@ class _NavDrawerState extends State<NavDrawer> {
             ),
             _buildListTile(
               index: 1,
-              icon: widget.selectedIndex == 1 ? Icons.chat : Icons.chat_outlined,
+              icon: widget.selectedIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
               text: 'Chat',
               theme: AppUtils.getColorScheme(context),
               textTheme: textTheme,
@@ -190,21 +190,21 @@ class _NavDrawerState extends State<NavDrawer> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-          color: isSelected ? theme.primary.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? theme.primary.withOpacity(0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          border: isSelected ? Border.all(color: theme.primary.withOpacity(0.3), width: 1) : null,
+          border: isSelected ? Border.all(color: theme.primary.withOpacity(0.4), width: 1.5) : null,
       ),
       child: ListTile(
         leading: Icon(
             icon,
-            color: isSelected ? theme.primary : theme.onSurface.withAlpha(120),
+            color: isSelected ? theme.primary : theme.onSurface.withOpacity(0.7),
             size: 24,
         ),
         title: Text(
           text,
           style: textTheme.titleSmall?.copyWith(
-            color: isSelected ? theme.primary : theme.onSurface.withAlpha(120),
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? theme.primary : theme.onSurface.withOpacity(0.8),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
           ),
         ),
         onTap: () {

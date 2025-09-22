@@ -91,7 +91,7 @@ class _BottomBarState extends State<BottomBar> {
                       text: 'Home'
                   ),
                   GButton(
-                      icon: _currentIndex == 1 ? Icons.chat : Icons.chat_outlined,
+                      icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
                       text: 'Chat'
                   ),
                   GButton(
