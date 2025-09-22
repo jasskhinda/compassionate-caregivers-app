@@ -193,39 +193,55 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
               children: [
                 // Header Section
                 Container(
-                  padding: EdgeInsets.all(24),
+                  width: double.infinity,
+                  padding: EdgeInsets.all(28),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        colorScheme.primary.withOpacity(0.1),
-                        colorScheme.primary.withOpacity(0.05),
+                        colorScheme.primary.withOpacity(0.12),
+                        colorScheme.primary.withOpacity(0.06),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withOpacity(0.1),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      Icon(
-                        Icons.access_time_filled,
-                        size: 48,
-                        color: colorScheme.primary,
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.access_time_filled,
+                          size: 40,
+                          color: colorScheme.primary,
+                        ),
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: 20),
                       Text(
                         'Clock Management',
-                        style: textTheme.headlineSmall?.copyWith(
+                        style: textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: colorScheme.onSurface,
                         ),
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Track your work hours',
+                        'Manage your work schedule and attendance',
                         style: textTheme.bodyLarge?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.7),
+                          color: colorScheme.onSurface.withOpacity(0.75),
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -235,41 +251,71 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
 
                 // Status Card
                 Container(
-                  padding: EdgeInsets.all(24),
+                  width: double.infinity,
+                  padding: EdgeInsets.all(28),
                   decoration: BoxDecoration(
-                    color: _clockStatus!['is_clocked_in'] == true
-                        ? Colors.green.shade50
-                        : Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: _clockStatus!['is_clocked_in'] == true
+                          ? [Colors.green.shade50, Colors.green.shade100]
+                          : [Colors.orange.shade50, Colors.orange.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: _clockStatus!['is_clocked_in'] == true
                           ? Colors.green.shade200
                           : Colors.orange.shade200,
                       width: 2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (_clockStatus!['is_clocked_in'] == true ? Colors.green : Colors.orange)
+                            .withOpacity(0.15),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
                       // Status Badge
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         decoration: BoxDecoration(
-                          color: _clockStatus!['is_clocked_in'] == true
-                              ? Colors.green
-                              : Colors.orange,
-                          borderRadius: BorderRadius.circular(20),
+                          gradient: LinearGradient(
+                            colors: _clockStatus!['is_clocked_in'] == true
+                                ? [Colors.green.shade600, Colors.green.shade500]
+                                : [Colors.orange.shade600, Colors.orange.shade500],
+                          ),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_clockStatus!['is_clocked_in'] == true ? Colors.green : Colors.orange)
+                                  .withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              _clockStatus!['is_clocked_in'] == true
-                                  ? Icons.check_circle
-                                  : Icons.schedule,
-                              color: Colors.white,
-                              size: 20,
+                            Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _clockStatus!['is_clocked_in'] == true
+                                    ? Icons.check_circle
+                                    : Icons.schedule,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
-                            SizedBox(width: 8),
+                            SizedBox(width: 12),
                             Text(
                               _clockStatus!['is_clocked_in'] == true
                                   ? 'CLOCKED IN'
@@ -278,6 +324,7 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
@@ -322,41 +369,103 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _clockStatus!['is_clocked_in'] == true
-                            ? null
-                            : _handleClockIn,
-                        icon: Icon(Icons.login),
-                        label: Text('Clock In', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey.shade300,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: _clockStatus!['is_clocked_in'] == true
+                              ? null
+                              : LinearGradient(
+                                  colors: [Colors.green.shade600, Colors.green.shade500],
+                                ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: _clockStatus!['is_clocked_in'] == true
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.green.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: _clockStatus!['is_clocked_in'] == true
+                              ? null
+                              : _handleClockIn,
+                          icon: Icon(Icons.login, size: 20),
+                          label: Text(
+                            'Clock In',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          elevation: 2,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _clockStatus!['is_clocked_in'] == true
+                                ? Colors.grey.shade300
+                                : Colors.transparent,
+                            foregroundColor: _clockStatus!['is_clocked_in'] == true
+                                ? Colors.grey.shade600
+                                : Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
                       ),
                     ),
                     SizedBox(width: 16),
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _clockStatus!['is_clocked_in'] == false
-                            ? null
-                            : _handleClockOut,
-                        icon: Icon(Icons.logout),
-                        label: Text('Clock Out', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: Colors.grey.shade300,
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          gradient: _clockStatus!['is_clocked_in'] == false
+                              ? null
+                              : LinearGradient(
+                                  colors: [Colors.red.shade600, Colors.red.shade500],
+                                ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: _clockStatus!['is_clocked_in'] == false
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: _clockStatus!['is_clocked_in'] == false
+                              ? null
+                              : _handleClockOut,
+                          icon: Icon(Icons.logout, size: 20),
+                          label: Text(
+                            'Clock Out',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                          elevation: 2,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _clockStatus!['is_clocked_in'] == false
+                                ? Colors.grey.shade300
+                                : Colors.transparent,
+                            foregroundColor: _clockStatus!['is_clocked_in'] == false
+                                ? Colors.grey.shade600
+                                : Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
                       ),
                     ),
@@ -367,17 +476,41 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
                   SizedBox(height: 32),
 
                   // Recent Activity Header
-                  Row(
-                    children: [
-                      Icon(Icons.history, color: colorScheme.primary),
-                      SizedBox(width: 8),
-                      Text(
-                        'Recent Activity',
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Container(
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.surfaceVariant.withOpacity(0.3),
+                          colorScheme.surfaceVariant.withOpacity(0.1),
+                        ],
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.history,
+                            color: colorScheme.primary,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Recent Activity',
+                          style: textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   SizedBox(height: 16),
@@ -389,16 +522,32 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
                     final isActive = clockOut == null && clockIn != null;
 
                     return Container(
-                      margin: EdgeInsets.only(bottom: 12),
-                      padding: EdgeInsets.all(16),
+                      margin: EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: colorScheme.surfaceVariant.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: isActive
+                              ? [Colors.green.shade50, Colors.green.shade100]
+                              : [colorScheme.surfaceVariant.withOpacity(0.3), colorScheme.surfaceVariant.withOpacity(0.1)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isActive
-                              ? Colors.green.withOpacity(0.3)
+                              ? Colors.green.withOpacity(0.4)
                               : colorScheme.outline.withOpacity(0.2),
+                          width: isActive ? 2 : 1,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isActive
+                                ? Colors.green.withOpacity(0.1)
+                                : colorScheme.shadow.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [

@@ -98,21 +98,23 @@ class ClockManagementService {
           'auto_clock_out_reason': 'logout',
         });
 
-        // Update attendance record
+        // Update attendance record - simplified query to avoid index requirement
         final today = DateTime.now().toIso8601String().split('T')[0];
         final attendanceQuery = await _firestore
             .collection('attendance')
             .where('user_id', isEqualTo: user.uid)
-            .where('date', isEqualTo: today)
-            .orderBy('clock_in_time', descending: true)
-            .limit(1)
             .get();
 
-        if (attendanceQuery.docs.isNotEmpty) {
-          await attendanceQuery.docs.first.reference.update({
-            'clock_out_time': FieldValue.serverTimestamp(),
-            'clock_out_type': 'auto_logout',
-          });
+        // Filter for today's record and find the one without clock_out_time
+        for (var doc in attendanceQuery.docs) {
+          final data = doc.data();
+          if (data['date'] == today && data['clock_out_time'] == null) {
+            await doc.reference.update({
+              'clock_out_time': FieldValue.serverTimestamp(),
+              'clock_out_type': 'auto_logout',
+            });
+            break;
+          }
         }
 
         // Create admin notification
@@ -194,21 +196,23 @@ class ClockManagementService {
         'last_clock_out_time': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // Update attendance record
+      // Update attendance record - simplified query to avoid index requirement
       final today = DateTime.now().toIso8601String().split('T')[0];
       final attendanceQuery = await _firestore
           .collection('attendance')
           .where('user_id', isEqualTo: user.uid)
-          .where('date', isEqualTo: today)
-          .orderBy('clock_in_time', descending: true)
-          .limit(1)
           .get();
 
-      if (attendanceQuery.docs.isNotEmpty) {
-        await attendanceQuery.docs.first.reference.update({
-          'clock_out_time': FieldValue.serverTimestamp(),
-          'clock_out_type': 'manual',
-        });
+      // Filter for today's record and find the one without clock_out_time
+      for (var doc in attendanceQuery.docs) {
+        final data = doc.data();
+        if (data['date'] == today && data['clock_out_time'] == null) {
+          await doc.reference.update({
+            'clock_out_time': FieldValue.serverTimestamp(),
+            'clock_out_type': 'manual',
+          });
+          break;
+        }
       }
 
       // Create admin notification
