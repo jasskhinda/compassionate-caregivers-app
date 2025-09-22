@@ -169,15 +169,10 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
   }
 
   Widget _buildAlertsList() {
+    // Simplified query to avoid index requirements
     Query<Map<String, dynamic>> query = _firestore
         .collection('admin_alerts')
-        .where('type', isEqualTo: 'night_shift_no_response')
         .orderBy('timestamp', descending: true);
-
-    // Apply filters
-    if (_selectedFilter == 'Unread') {
-      query = query.where('read', isEqualTo: false);
-    }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: query.snapshots(),
@@ -197,13 +192,24 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
 
         final alerts = snapshot.data?.docs ?? [];
 
-        // Filter for "No Response" alerts
-        final filteredAlerts = _selectedFilter == 'NoResponse'
-            ? alerts.where((doc) {
-                final data = doc.data();
-                return data['type'] == 'night_shift_no_response';
-              }).toList()
-            : alerts;
+        // Filter alerts based on type and selected filter
+        final filteredAlerts = alerts.where((doc) {
+          final data = doc.data();
+
+          // Only show night shift alerts
+          if (data['type'] != 'night_shift_no_response') {
+            return false;
+          }
+
+          // Apply selected filter
+          if (_selectedFilter == 'Unread') {
+            return data['read'] != true;
+          } else if (_selectedFilter == 'NoResponse') {
+            return data['type'] == 'night_shift_no_response';
+          }
+
+          return true; // Show all for 'All' filter
+        }).toList();
 
         if (filteredAlerts.isEmpty) {
           return Center(
