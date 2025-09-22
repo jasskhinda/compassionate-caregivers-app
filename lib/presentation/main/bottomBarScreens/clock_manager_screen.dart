@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:caregiver/services/clock_management_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class ClockManagerScreen extends StatefulWidget {
   const ClockManagerScreen({super.key});
@@ -17,27 +18,54 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
   Map<String, dynamic>? _clockStatus;
   bool _isLoading = true;
   List<Map<String, dynamic>> _recentActivity = [];
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadClockStatus();
+    _setupRealTimeListener();
     _loadRecentActivity();
   }
 
-  Future<void> _loadClockStatus() async {
-    setState(() => _isLoading = true);
-    try {
-      final status = await _clockService.getCurrentClockStatus();
-      setState(() {
-        _clockStatus = status;
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error loading clock status: $e');
-      setState(() => _isLoading = false);
-    }
+  @override
+  void dispose() {
+    _userDataSubscription?.cancel();
+    super.dispose();
   }
+
+  void _setupRealTimeListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _userDataSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(user.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists && mounted) {
+        final userData = snapshot.data() as Map<String, dynamic>?;
+        if (userData != null) {
+          setState(() {
+            _clockStatus = {
+              'is_clocked_in': userData['is_clocked_in'] ?? false,
+              'last_clock_in_time': userData['last_clock_in_time'],
+              'last_clock_out_time': userData['last_clock_out_time'],
+              'name': userData['name'],
+              'role': userData['role'],
+              'shift_type': userData['shift_type'],
+            };
+            _isLoading = false;
+          });
+        }
+      }
+    }, onError: (error) {
+      debugPrint('Error listening to user data: $error');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    });
+  }
+
 
   Future<void> _loadRecentActivity() async {
     try {
@@ -97,7 +125,7 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      _loadClockStatus();
+      // Real-time listener will automatically update _clockStatus
       _loadRecentActivity();
     }
   }
@@ -119,7 +147,7 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      _loadClockStatus();
+      // Real-time listener will automatically update _clockStatus
       _loadRecentActivity();
     }
   }
@@ -168,7 +196,12 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
               Text('Unable to load clock status', style: textTheme.titleMedium),
               SizedBox(height: 8),
               ElevatedButton(
-                onPressed: _loadClockStatus,
+                onPressed: () {
+                  setState(() {
+                    _isLoading = true;
+                  });
+                  _setupRealTimeListener();
+                },
                 child: Text('Retry'),
               ),
             ],
@@ -181,7 +214,7 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
       backgroundColor: colorScheme.surface,
       body: RefreshIndicator(
         onRefresh: () async {
-          await _loadClockStatus();
+          // Real-time listener handles clock status updates automatically
           await _loadRecentActivity();
         },
         child: SingleChildScrollView(

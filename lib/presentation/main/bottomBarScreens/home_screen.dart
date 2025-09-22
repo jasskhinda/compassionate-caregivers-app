@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:caregiver/component/appBar/home_app_bar.dart';
 import 'package:caregiver/component/home/initial_option_layout.dart';
 import 'package:caregiver/component/listLayout/assigned_video_layout.dart';
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? _completedVideo;
   bool _isClockedIn = false;
   String? _shiftType;
+  StreamSubscription<DocumentSnapshot>? _userDataSubscription;
 
   // Get all user count
   Future<void> _getUserCount() async {
@@ -185,9 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'clock_in_time': FieldValue.serverTimestamp(),
           });
 
-      setState(() {
-        _isClockedIn = true;
-      });
+      // Real-time listener will automatically update _isClockedIn
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -247,9 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'clock_out_time': FieldValue.serverTimestamp(),
           });
 
-      setState(() {
-        _isClockedIn = false;
-      });
+      // Real-time listener will automatically update _isClockedIn
 
       // Stop night shift monitoring
       if (_shiftType == 'Night') {
@@ -275,13 +273,51 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _getUserInfo();
+    _setupRealTimeUserListener();
     _initializeAndSyncData();
   }
 
+  @override
+  void dispose() {
+    _userDataSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupRealTimeUserListener() {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    _userDataSubscription = FirebaseFirestore.instance
+        .collection('Users')
+        .doc(user.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists && mounted) {
+        final userData = snapshot.data() as Map<String, dynamic>?;
+        if (userData != null) {
+          setState(() {
+            _role = userData['role'] ?? 'Caregiver';
+            _username = userData['name'] ?? 'User';
+            _assignedVideo = userData['assigned_video'] ?? 0;
+            _completedVideo = userData['completed_video'] ?? 0;
+            _isClockedIn = userData['is_clocked_in'] ?? false;
+            _shiftType = userData['shift_type'];
+            _isLoading = false;
+          });
+          debugPrint('Real-time user info updated: role=$_role, username=$_username, isClockedIn=$_isClockedIn');
+        }
+      }
+    }, onError: (error) {
+      debugPrint('Error listening to user data: $error');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    });
+  }
+
   Future<void> _initializeAndSyncData() async {
-    // First get user info to know if this is an admin
-    await _getUserInfo();
+    // Real-time listener handles user info, just wait a moment for initial data
+    await Future.delayed(Duration(milliseconds: 500));
 
     // If user is an admin, sync user counts to fix discrepancies
     if (_role == 'Admin') {
@@ -308,10 +344,8 @@ class _HomeScreenState extends State<HomeScreen> {
               _isLoading = true;
             });
             try {
-              await Future.wait([
-                _getUserInfo(),
-                _getUserCount(),
-              ]);
+              // Real-time listener handles user info, just refresh user count
+              await _getUserCount();
             } finally {
               if (mounted) {
                 setState(() {
