@@ -225,7 +225,7 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
           final data = doc.data();
 
           // Show all night shift related alerts
-          final nightShiftTypes = ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in'];
+          final nightShiftTypes = ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in', 'night_shift_clock_out'];
           if (!nightShiftTypes.contains(data['type'])) {
             return false;
           }
@@ -318,6 +318,13 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
         borderColor = Colors.blue.shade300;
         icon = Icons.login;
         title = 'Night Shift Clock-in';
+        break;
+      case 'night_shift_clock_out':
+        iconColor = Colors.orange.shade700;
+        backgroundColor = Colors.orange.shade50;
+        borderColor = Colors.orange.shade300;
+        icon = Icons.logout;
+        title = 'Night Shift Clock-out';
         break;
       case 'night_shift_no_response':
       default:
@@ -531,7 +538,7 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _firestore
           .collection('admin_alerts')
-          .where('type', whereIn: ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in'])
+          .where('type', whereIn: ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in', 'night_shift_clock_out'])
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {

@@ -359,6 +359,26 @@ class NightShiftMonitoringService {
     _isAlertActive = false;
   }
 
+  // Stop monitoring when user clocks out
+  void stopMonitoringOnClockOut() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userDoc = await _firestore
+        .collection('Users')
+        .doc(user.uid)
+        .get();
+
+    final userData = userDoc.data();
+    if (userData != null &&
+        userData['role'] == 'Caregiver' &&
+        userData['shift_type'] == 'Night' &&
+        userData['is_clocked_in'] == false) {
+      debugPrint('NightShift: Caregiver clocked out, stopping monitoring');
+      stopMonitoring();
+    }
+  }
+
   // Check if monitoring is active
   bool get isMonitoring => _alertTimer != null;
 

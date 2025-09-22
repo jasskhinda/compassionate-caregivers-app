@@ -10,6 +10,7 @@ import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
 import 'package:caregiver/services/user_video_services.dart';
 import 'package:caregiver/services/firebase_service.dart';
 import 'package:caregiver/services/user_services.dart';
+import 'package:caregiver/services/night_shift_monitoring_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 
@@ -34,6 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // User services instance
   final UserServices _userServices = UserServices();
 
+  // Night shift monitoring service
+  final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
+
   // User count
   int? _staff;
   int? _caregiver;
@@ -44,6 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _username;
   int? _assignedVideo;
   int? _completedVideo;
+  bool _isClockedIn = false;
+  String? _shiftType;
 
   // Get all user count
   Future<void> _getUserCount() async {
@@ -101,6 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _username = data['name'] ?? 'User';
             _assignedVideo = data['assigned_video'] ?? 0;
             _completedVideo = data['completed_video'] ?? 0;
+            _isClockedIn = data['is_clocked_in'] ?? false;
+            _shiftType = data['shift_type'];
             _isLoading = false;
           });
           debugPrint('User info loaded: role=$_role, username=$_username');
@@ -134,6 +142,133 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       debugPrint("Error fetching user info: $e");
+    }
+  }
+
+  // Clock in/out functionality
+  Future<void> _clockIn() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .set({
+            'is_clocked_in': true,
+            'last_clock_in_time': FieldValue.serverTimestamp(),
+            'manual_clock_in': true,
+          }, SetOptions(merge: true));
+
+      // Create attendance record
+      await FirebaseFirestore.instance
+          .collection('attendance')
+          .add({
+            'user_id': user.uid,
+            'user_name': _username,
+            'clock_in_time': FieldValue.serverTimestamp(),
+            'type': 'manual_clock_in',
+            'date': DateTime.now().toIso8601String().split('T')[0],
+          });
+
+      // Create admin notification
+      await FirebaseFirestore.instance
+          .collection('admin_alerts')
+          .add({
+            'type': 'night_shift_clock_in',
+            'caregiver_id': user.uid,
+            'caregiver_name': _username,
+            'message': '$_username manually clocked in for shift',
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'status': 'clocked_in',
+            'clock_in_time': FieldValue.serverTimestamp(),
+          });
+
+      setState(() {
+        _isClockedIn = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Successfully clocked in!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error clocking in: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _clockOut() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .set({
+            'is_clocked_in': false,
+            'last_clock_out_time': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+      // Update attendance record
+      final attendanceQuery = await FirebaseFirestore.instance
+          .collection('attendance')
+          .where('user_id', isEqualTo: user.uid)
+          .where('date', isEqualTo: DateTime.now().toIso8601String().split('T')[0])
+          .orderBy('clock_in_time', descending: true)
+          .limit(1)
+          .get();
+
+      if (attendanceQuery.docs.isNotEmpty) {
+        await attendanceQuery.docs.first.reference.update({
+          'clock_out_time': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // Create admin notification
+      await FirebaseFirestore.instance
+          .collection('admin_alerts')
+          .add({
+            'type': 'night_shift_clock_out',
+            'caregiver_id': user.uid,
+            'caregiver_name': _username,
+            'message': '$_username clocked out from shift',
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'status': 'clocked_out',
+            'clock_out_time': FieldValue.serverTimestamp(),
+          });
+
+      setState(() {
+        _isClockedIn = false;
+      });
+
+      // Stop night shift monitoring
+      if (_shiftType == 'Night') {
+        _nightShiftService.stopMonitoring();
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Successfully clocked out!'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error clocking out: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -231,6 +366,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                   optionTwoIcon: Icons.slow_motion_video_rounded,
                                   optionOneCount: _assignedVideo != null ? _assignedVideo.toString() : '0',
                                   optionTwoCount: _completedVideo != null ? _completedVideo.toString() : '0'
+                              ),
+
+                            // Clock-in/Clock-out for Night Shift Caregivers
+                            if (_role == 'Caregiver' && _shiftType == 'Night')
+                              Column(
+                                children: [
+                                  const SizedBox(height: 20),
+                                  _buildClockInOutSection(),
+                                ],
                               ),
 
                           if (_role == 'Admin')
@@ -536,5 +680,114 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
 
+  }
+
+  Widget _buildClockInOutSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: _isClockedIn
+              ? [Colors.green.shade50, Colors.green.shade100]
+              : [Colors.blue.shade50, Colors.blue.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isClockedIn
+              ? Colors.green.shade300
+              : Colors.blue.shade300,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (_isClockedIn ? Colors.green : Colors.blue).withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isClockedIn
+                      ? Colors.green.shade200
+                      : Colors.blue.shade200,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isClockedIn ? Icons.work : Icons.work_outline,
+                  color: _isClockedIn
+                      ? Colors.green.shade700
+                      : Colors.blue.shade700,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Night Shift Status',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppUtils.getColorScheme(context).onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _isClockedIn ? 'Currently clocked in' : 'Not clocked in',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _isClockedIn
+                            ? Colors.green.shade700
+                            : Colors.grey.shade600,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _isClockedIn ? _clockOut : _clockIn,
+              icon: Icon(
+                _isClockedIn ? Icons.logout : Icons.login,
+                color: Colors.white,
+              ),
+              label: Text(
+                _isClockedIn ? 'Clock Out' : 'Clock In',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isClockedIn
+                    ? Colors.red.shade600
+                    : Colors.green.shade600,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

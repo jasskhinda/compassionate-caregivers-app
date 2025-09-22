@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/library/library_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_screen.dart';
+import 'package:caregiver/presentation/main/bottomBarScreens/clock_manager_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../component/bottomBar/bottom_bar.dart';
@@ -26,6 +27,7 @@ class _MainScreenState extends State<MainScreen> {
   String? _userRole;
   bool _isAdmin = false;
   bool _isStaff = false;
+  bool _isCaregiver = false;
 
   // Update the selected index
   void _updateSelectedIndex(int index) {
@@ -46,6 +48,11 @@ class _MainScreenState extends State<MainScreen> {
     // Add User Management for Admin/Staff only
     if (_isAdmin || _isStaff) {
       pages.add(const ManageUserScreen());
+    }
+
+    // Add Clock Manager for Caregivers only
+    if (_isCaregiver) {
+      pages.add(const ClockManagerScreen());
     }
 
     return pages;
@@ -69,6 +76,7 @@ class _MainScreenState extends State<MainScreen> {
             _userRole = role;
             _isAdmin = role == 'Admin';
             _isStaff = role == 'Staff';
+            _isCaregiver = role == 'Caregiver';
           });
         }
       }

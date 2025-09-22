@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:caregiver/utils/appRoutes/assets.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
+import 'package:caregiver/services/clock_management_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../theme/theme_provider.dart';
@@ -141,13 +142,23 @@ class _NavDrawerState extends State<NavDrawer> {
                 textTheme: textTheme,
               ),
 
+            // Clock Manager tab for Night Shift Caregivers
+            if (_userRole == 'Caregiver')
+              _buildListTile(
+                index: 5,
+                icon: widget.selectedIndex == 5 ? Icons.access_time : Icons.access_time_outlined,
+                text: 'Clock Manager',
+                theme: AppUtils.getColorScheme(context),
+                textTheme: textTheme,
+              ),
+
             // Preferences
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 20, 0, 0),
               child: Text('Preferences', style: textTheme.titleSmall?.copyWith(color: AppUtils.getColorScheme(context).onSurface.withAlpha(80))),
             ),
             _settingListTile(
-                index: 5,
+                index: 7,
                 leadingIcon: Icons.dark_mode_outlined,
                 trailIcon: const ThemeButton(),
                 text: 'Dark Mode',
@@ -244,9 +255,12 @@ class _NavDrawerState extends State<NavDrawer> {
         trailing: trailIcon,
         onTap: () {
           // Check if the item is not part of the bottom bar by index
-          if (index == 5) { // Sign out
-            FirebaseAuth.instance.signOut();
-            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.loginScreen, (route) => false);
+          if (index == 6) { // Sign out
+            // Auto clock-out before logout
+            ClockManagementService().autoClockOutOnLogout().then((_) {
+              FirebaseAuth.instance.signOut();
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.loginScreen, (route) => false);
+            });
           } else {
             // Use the onTabChange for bottom-bar items to sync selection
             widget.onTabChange(index);
