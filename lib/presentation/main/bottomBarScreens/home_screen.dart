@@ -180,11 +180,13 @@ class _HomeScreenState extends State<HomeScreen> {
             'type': 'night_shift_clock_in',
             'caregiver_id': user.uid,
             'caregiver_name': _username,
-            'message': '$_username manually clocked in for shift',
+            'message': '$_username manually clocked in from dashboard',
             'timestamp': FieldValue.serverTimestamp(),
             'read': false,
             'status': 'clocked_in',
             'clock_in_time': FieldValue.serverTimestamp(),
+            'clock_in_type': 'manual',
+            'source': 'dashboard',
           });
 
       // Real-time listener will automatically update _isClockedIn
@@ -218,19 +220,23 @@ class _HomeScreenState extends State<HomeScreen> {
             'last_clock_out_time': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
-      // Update attendance record
+      // Update attendance record - simplified query to avoid index requirement
+      final today = DateTime.now().toIso8601String().split('T')[0];
       final attendanceQuery = await FirebaseFirestore.instance
           .collection('attendance')
           .where('user_id', isEqualTo: user.uid)
-          .where('date', isEqualTo: DateTime.now().toIso8601String().split('T')[0])
-          .orderBy('clock_in_time', descending: true)
-          .limit(1)
           .get();
 
-      if (attendanceQuery.docs.isNotEmpty) {
-        await attendanceQuery.docs.first.reference.update({
-          'clock_out_time': FieldValue.serverTimestamp(),
-        });
+      // Filter for today's record and find the one without clock_out_time
+      for (var doc in attendanceQuery.docs) {
+        final data = doc.data();
+        if (data['date'] == today && data['clock_out_time'] == null) {
+          await doc.reference.update({
+            'clock_out_time': FieldValue.serverTimestamp(),
+            'clock_out_type': 'manual',
+          });
+          break;
+        }
       }
 
       // Create admin notification
@@ -240,11 +246,13 @@ class _HomeScreenState extends State<HomeScreen> {
             'type': 'night_shift_clock_out',
             'caregiver_id': user.uid,
             'caregiver_name': _username,
-            'message': '$_username clocked out from shift',
+            'message': '$_username manually clocked out from dashboard',
             'timestamp': FieldValue.serverTimestamp(),
             'read': false,
             'status': 'clocked_out',
             'clock_out_time': FieldValue.serverTimestamp(),
+            'clock_out_type': 'manual',
+            'source': 'dashboard',
           });
 
       // Real-time listener will automatically update _isClockedIn

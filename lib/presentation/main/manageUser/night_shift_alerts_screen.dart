@@ -136,7 +136,7 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
                               child: _buildFilterTab('NoResponse', 'No Response'),
                             ),
                             Expanded(
-                              child: _buildFilterTab('ClockIn', 'Clock-ins'),
+                              child: _buildFilterTab('ClockEvents', 'Clock Events'),
                             ),
                           ],
                         ),
@@ -235,8 +235,8 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
             return data['type'] == 'night_shift_response';
           } else if (_selectedFilter == 'NoResponse') {
             return data['type'] == 'night_shift_no_response';
-          } else if (_selectedFilter == 'ClockIn') {
-            return data['type'] == 'night_shift_clock_in';
+          } else if (_selectedFilter == 'ClockEvents') {
+            return data['type'] == 'night_shift_clock_in' || data['type'] == 'night_shift_clock_out';
           }
 
           return true; // Show all for 'All' filter
