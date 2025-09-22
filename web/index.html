@@ -72,6 +72,33 @@
         }
       });
       
+    // Handle Firebase Auth actions (password reset, email verification, etc.)
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const mode = urlParams.get('mode');
+      const oobCode = urlParams.get('oobCode');
+
+      if (mode && oobCode) {
+        console.log('🔧 Handling Firebase Auth action:', mode);
+
+        if (mode === 'resetPassword') {
+          // Redirect to custom reset password page
+          window.location.href = `/reset-password.html${window.location.search}`;
+        } else if (mode === 'verifyEmail') {
+          // Handle email verification
+          firebase.auth().applyActionCode(oobCode)
+            .then(() => {
+              alert('✅ Email verified successfully!');
+              window.location.href = '/';
+            })
+            .catch((error) => {
+              console.error('❌ Email verification error:', error);
+              alert('Error verifying email: ' + error.message);
+            });
+        }
+      }
+    });
+
     // Monitor auth state changes
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
