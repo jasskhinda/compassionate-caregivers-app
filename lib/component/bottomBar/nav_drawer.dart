@@ -135,7 +135,7 @@ class _NavDrawerState extends State<NavDrawer> {
             if (_isAdmin || _isStaff)
               _buildListTile(
                 index: 4,
-                icon: widget.selectedIndex == 4 ? Icons.manage_accounts : Icons.manage_accounts_outlined,
+                icon: widget.selectedIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
                 text: 'User Management',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,
@@ -197,8 +197,8 @@ class _NavDrawerState extends State<NavDrawer> {
       child: ListTile(
         leading: Icon(
             icon,
-            color: isSelected ? theme.primary : theme.onSurface.withOpacity(0.7),
-            size: 24,
+            color: isSelected ? theme.primary : (theme.onSurface.withOpacity(0.85)),
+            size: 26,
         ),
         title: Text(
           text,
