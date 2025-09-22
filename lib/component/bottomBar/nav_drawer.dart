@@ -135,7 +135,7 @@ class _NavDrawerState extends State<NavDrawer> {
             if (_isAdmin || _isStaff)
               _buildListTile(
                 index: 4,
-                icon: widget.selectedIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                icon: widget.selectedIndex == 4 ? Icons.settings : Icons.settings_outlined,
                 text: 'User Management',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,
