@@ -129,7 +129,19 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 10),
-                        IconBasicButton(text: 'Add new users', buttonColor: AppUtils.getColorScheme(context).tertiaryContainer, textColor: Colors.white, icon: Icons.add, onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)),
+                        if (_role == 'Admin' || _role == 'Staff')
+                          IconBasicButton(text: 'Add new users', buttonColor: AppUtils.getColorScheme(context).tertiaryContainer, textColor: Colors.white, icon: Icons.add, onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)),
+
+                        if (_role == 'Admin' || _role == 'Staff') ...[
+                          const SizedBox(height: 15),
+                          IconBasicButton(
+                            text: 'Night Shift Alerts',
+                            buttonColor: Colors.orange.shade600,
+                            textColor: Colors.white,
+                            icon: Icons.nightlight_round,
+                            onPressed: () => Navigator.pushNamed(context, AppRoutes.nightShiftAlertsScreen)
+                          ),
+                        ],
                         const SizedBox(height: 20),
 
                         // Super Admin gets unified user management
@@ -185,7 +197,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                               const SizedBox(width: 15),
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () => _role ==  'Admin' ? Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen) : {},
+                                  onTap: () => (_role == 'Admin' || _role == 'Staff') ? Navigator.pushNamed(context, AppRoutes.allCaregiverUserScreen) : {},
                                   child: UserCountLayout(title: 'Caregiver', count: caregiver.toString(), icon: Icons.person)
                                 )
                               ),

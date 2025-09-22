@@ -34,6 +34,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
   // Dropdown selection
   String selectedRole = 'Staff';
+  String selectedShiftType = 'Day'; // New field for shift type
 
   // User info
   String? _role;
@@ -149,6 +150,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
         'assigned_video': 0,
         'completed_video': 0,
         'mobile_number': '',
+        'shift_type': selectedRole == 'Caregiver' ? selectedShiftType : null,
+        'is_clocked_in': false,
+        'last_clock_in_time': null,
+        'last_alert_response': null,
       });
 
       // Increment role count
@@ -279,6 +284,31 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           });
                         },
                       ),
+                      if (selectedRole == 'Caregiver') ...[
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedShiftType,
+                          decoration: InputDecoration(
+                            labelText: 'Shift Type',
+                            helperText: 'Night shift caregivers will be automatically clocked in between 8pm-1am',
+                            helperMaxLines: 2,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          items: ['Day', 'Night'].map((String shift) {
+                            return DropdownMenuItem(
+                              value: shift,
+                              child: Text('$shift Shift'),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedShiftType = value!;
+                            });
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 50),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40.0),

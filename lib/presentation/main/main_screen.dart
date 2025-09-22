@@ -5,6 +5,7 @@ import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_scr
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../component/bottomBar/bottom_bar.dart';
 import '../../component/bottomBar/nav_drawer.dart';
+import '../../services/night_shift_monitoring_service.dart';
 import 'bottomBarScreens/home_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _MainScreenState extends State<MainScreen> {
 
   // Manage the selected index for both BottomBar and NavDrawer
   int _selectedIndex = 0;
+  final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
 
   // Update the selected index
   void _updateSelectedIndex(int index) {
@@ -33,6 +35,21 @@ class _MainScreenState extends State<MainScreen> {
     const LibraryScreen(),
     const ProfileScreen()
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Start night shift monitoring if applicable
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _nightShiftService.startMonitoring(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    _nightShiftService.stopMonitoring();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

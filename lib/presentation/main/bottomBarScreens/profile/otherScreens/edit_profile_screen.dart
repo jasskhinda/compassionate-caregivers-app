@@ -27,6 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _mobileNumber;
   String? _dob;
   String? _profileImageUrl;
+  String? _shiftType;
   bool _isLoading = false;
   bool _isUploadingImage = false;
   XFile? _imageFile;
@@ -64,6 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _mobileNumber = data['mobile_number'];
           _dob = data['dob'];
           _profileImageUrl = data['profile_image_url'];
+          _shiftType = data['shift_type'] ?? 'Day';
           _usernameController.text = _name ?? '';
           _emailController.text = _auth.currentUser!.email ?? '';
           _mobileController.text = _mobileNumber ?? '';
@@ -256,6 +258,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'dob': _dobController.text.toString(),
             'profile_image_url': newImageUrl,
             if (_emailController.text.isNotEmpty) 'email': user.email!,
+            if (_role == 'Caregiver' && _shiftType != null) 'shift_type': _shiftType,
       }, SetOptions(merge: true));
 
       if (!mounted) return;
@@ -675,6 +678,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           ),
                         ),
+
+                        // Shift Type for Caregivers only
+                        if (_role == 'Caregiver') ...[
+                          Text(
+                            'Shift Type',
+                            style: textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppUtils.getColorScheme(context).onSurface
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          DropdownButtonFormField<String>(
+                            value: _shiftType ?? 'Day',
+                            decoration: InputDecoration(
+                              labelText: 'Shift Type',
+                              helperText: 'Night shift caregivers will be automatically clocked in between 8pm-1am',
+                              helperMaxLines: 2,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              enabled: _isEditing,
+                            ),
+                            items: ['Day', 'Night'].map((String shift) {
+                              return DropdownMenuItem(
+                                value: shift,
+                                child: Text('$shift Shift'),
+                              );
+                            }).toList(),
+                            onChanged: _isEditing ? (value) {
+                              setState(() {
+                                _shiftType = value;
+                              });
+                            } : null,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
 
                         const SizedBox(height: 14),
 

@@ -23,6 +23,7 @@ class _AllCaregiverUserScreenState extends State<AllCaregiverUserScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   bool _isAdmin = false;
+  bool _isStaff = false;
   bool _isSuperAdmin = false;
   bool _isLoading = true;
 
@@ -45,6 +46,7 @@ class _AllCaregiverUserScreenState extends State<AllCaregiverUserScreen> {
 
           setState(() {
             _isAdmin = role == 'Admin';
+            _isStaff = role == 'Staff';
             _isSuperAdmin = email.toLowerCase() == 'j.khinda@ccgrhc.com';
             _isLoading = false;
           });
@@ -209,7 +211,7 @@ class _AllCaregiverUserScreenState extends State<AllCaregiverUserScreen> {
                 description: caregiverEmail,
                 profileImageUrl: profileImageUrl,
                 onTap: () => Navigator.pushNamed(context, AppRoutes.personalInfoScreen, arguments: {'userID': caregiverUid}),
-                trailing: _isAdmin ? IconButton(
+                trailing: (_isAdmin || _isStaff) ? IconButton(
                   icon: Icon(Icons.delete, color: AppUtils.getColorScheme(context).onSurface),
                   onPressed: () async {
                     final confirm = await showDialog<bool>(

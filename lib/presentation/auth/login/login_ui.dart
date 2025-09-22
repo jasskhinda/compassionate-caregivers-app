@@ -99,6 +99,47 @@ class _LoginUiState extends State<LoginUi> {
           .doc(user.uid)
           .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
 
+      // Check if user is a night shift caregiver and auto clock-in if within time window
+      final userDocData = (await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get()).data();
+
+      if (userDocData != null &&
+          userDocData['role'] == 'Caregiver' &&
+          userDocData['shift_type'] == 'Night') {
+
+        // Check if current time is between 8pm-1am
+        final now = DateTime.now();
+        final hour = now.hour;
+
+        // 8pm (20:00) to midnight OR midnight to 1am (01:00)
+        if ((hour >= 20 && hour <= 23) || (hour >= 0 && hour <= 1)) {
+          // Auto clock-in the night shift caregiver
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(user.uid)
+              .set({
+                'is_clocked_in': true,
+                'last_clock_in_time': FieldValue.serverTimestamp(),
+                'auto_clocked_in': true,
+              }, SetOptions(merge: true));
+
+          // Create attendance record
+          await FirebaseFirestore.instance
+              .collection('attendance')
+              .add({
+                'user_id': user.uid,
+                'user_name': userDocData['name'],
+                'clock_in_time': FieldValue.serverTimestamp(),
+                'type': 'auto_night_shift',
+                'date': DateTime.now().toIso8601String().split('T')[0],
+              });
+
+          debugPrint('✅ Night shift caregiver auto-clocked in');
+        }
+      }
+
       if (!mounted) return;
       // Navigator.pop(context); // dismiss loading
       setState(() {

@@ -34,6 +34,7 @@ import 'package:caregiver/presentation/main/manageUser/all_admin_user_screen.dar
 import 'package:caregiver/presentation/main/manageUser/all_users_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/create_user_screen.dart';
 import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/night_shift_alerts_screen.dart';
 import 'package:caregiver/presentation/splash/splash_screen.dart';
 import 'package:caregiver/presentation/terms/privacy_and_policy.dart';
 import 'package:caregiver/presentation/terms/terms_and_conditions_screen.dart';
@@ -151,6 +152,7 @@ class MyApp extends StatelessWidget {
         AppRoutes.privacyAndPolicyScreen: (context) => const PrivacyAndPolicyScreen(),
         AppRoutes.createCategoryScreen: (context) => const LibraryScreen(), // Redirect to library screen for category creation
         AppRoutes.uploadVideoScreen: (context) => const UploadVideoScreen(), // Dedicated video upload screen
+        AppRoutes.nightShiftAlertsScreen: (context) => const NightShiftAlertsScreen(),
       },
       home: const SplashScreen(),
     );
