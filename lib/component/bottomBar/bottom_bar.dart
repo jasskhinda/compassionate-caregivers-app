@@ -106,7 +106,7 @@ class _BottomBarState extends State<BottomBar> {
                   // User Management tab for Admin/Staff only
                   if (_isAdmin || _isStaff)
                     GButton(
-                        icon: _currentIndex == 4 ? Icons.settings : Icons.settings_outlined,
+                        icon: _currentIndex == 4 ? Icons.home : Icons.home_outlined,
                         text: 'Manage'
                     ),
                 ]
