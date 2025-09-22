@@ -24,7 +24,10 @@ class NightShiftMonitoringService {
 
     // Check if current user is a night shift caregiver
     final user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint('NightShift: No user logged in');
+      return;
+    }
 
     final userDoc = await _firestore
         .collection('Users')
@@ -32,26 +35,56 @@ class NightShiftMonitoringService {
         .get();
 
     final userData = userDoc.data();
-    if (userData == null ||
-        userData['role'] != 'Caregiver' ||
-        userData['shift_type'] != 'Night') {
-      return; // Not a night shift caregiver
+    if (userData == null) {
+      debugPrint('NightShift: No user data found');
+      return;
     }
 
-    // Schedule random alerts between 20-60 minutes
-    _scheduleNextAlert();
+    final role = userData['role'];
+    final shiftType = userData['shift_type'];
+    final isClockedIn = userData['is_clocked_in'] ?? false;
+
+    debugPrint('NightShift: User role: $role, shift: $shiftType, clocked in: $isClockedIn');
+
+    if (role != 'Caregiver') {
+      debugPrint('NightShift: User is not a caregiver');
+      return;
+    }
+
+    if (shiftType != 'Night') {
+      debugPrint('NightShift: User is not night shift');
+      return;
+    }
+
+    // For testing: Skip clock-in requirement and start monitoring immediately
+    // if (!isClockedIn) {
+    //   debugPrint('NightShift: User is not clocked in, monitoring will start when they clock in');
+    //   return;
+    // }
+
+    debugPrint('NightShift: Starting monitoring for night shift caregiver');
+    // Schedule first alert quickly for testing
+    _scheduleNextAlert(isFirstAlert: true);
   }
 
-  void _scheduleNextAlert() {
+  void _scheduleNextAlert({bool isFirstAlert = false}) {
     // Cancel existing timer if any
     _alertTimer?.cancel();
 
-    // Random interval between 20-60 minutes
     final random = Random();
-    final minutes = 20 + random.nextInt(41); // 20 to 60 minutes
-    final duration = Duration(minutes: minutes);
+    Duration duration;
 
-    debugPrint('Next alert scheduled in $minutes minutes');
+    if (isFirstAlert) {
+      // For testing: First alert comes very quickly (10-30 seconds)
+      final seconds = 10 + random.nextInt(21); // 10 to 30 seconds
+      duration = Duration(seconds: seconds);
+      debugPrint('TESTING: First alert scheduled in $seconds seconds');
+    } else {
+      // For testing: Subsequent alerts come faster (1-5 minutes instead of 20-60)
+      final minutes = 1 + random.nextInt(5); // 1 to 5 minutes
+      duration = Duration(minutes: minutes);
+      debugPrint('TESTING: Next alert scheduled in $minutes minutes');
+    }
 
     _alertTimer = Timer(duration, () {
       _showAlertDialog();
@@ -264,7 +297,33 @@ class NightShiftMonitoringService {
     _scheduleNextAlert();
   }
 
+  // Start monitoring immediately after clock-in
+  void startMonitoringAfterClockIn(BuildContext context) async {
+    debugPrint('NightShift: Checking if monitoring should start after clock-in');
+
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final userDoc = await _firestore
+        .collection('Users')
+        .doc(user.uid)
+        .get();
+
+    final userData = userDoc.data();
+    if (userData == null) return;
+
+    final role = userData['role'];
+    final shiftType = userData['shift_type'];
+
+    if (role == 'Caregiver' && shiftType == 'Night') {
+      debugPrint('NightShift: Night shift caregiver clocked in, starting monitoring');
+      _context = context;
+      _scheduleNextAlert(isFirstAlert: true);
+    }
+  }
+
   void stopMonitoring() {
+    debugPrint('NightShift: Stopping monitoring');
     _alertTimer?.cancel();
     _responseTimer?.cancel();
     _alertTimer = null;
