@@ -143,11 +143,11 @@ class _NavDrawerState extends State<NavDrawer> {
                 textTheme: textTheme,
               ),
 
-            // Clock Manager tab for Night Shift Caregivers
+            // Clock Manager tab for Caregivers
             if (_userRole == 'Caregiver')
               _buildListTile(
-                index: 5,
-                icon: widget.selectedIndex == 5 ? Icons.access_time_filled : Icons.access_time,
+                index: 4,
+                icon: widget.selectedIndex == 4 ? Icons.access_time_filled : Icons.access_time,
                 text: 'Clock Manager',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,
