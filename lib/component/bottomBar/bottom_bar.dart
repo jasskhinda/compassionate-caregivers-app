@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 
@@ -15,11 +17,39 @@ class BottomBar extends StatefulWidget {
 class _BottomBarState extends State<BottomBar> {
 
   late int _currentIndex;
+  bool _isAdmin = false;
+  bool _isStaff = false;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.selectedIndex;
+    _checkUserRole();
+  }
+
+  // Check user role
+  Future<void> _checkUserRole() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final role = userData['role'] ?? '';
+
+          setState(() {
+            _isAdmin = role == 'Admin';
+            _isStaff = role == 'Staff';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking user role: $e');
+    }
   }
 
   @override
@@ -72,6 +102,13 @@ class _BottomBarState extends State<BottomBar> {
                       icon: _currentIndex == 3 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
                       text: 'Profile'
                   ),
+
+                  // User Management tab for Admin/Staff only
+                  if (_isAdmin || _isStaff)
+                    GButton(
+                        icon: _currentIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                        text: 'Manage'
+                    ),
                 ]
             ),
           ),

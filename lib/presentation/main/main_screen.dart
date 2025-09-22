@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/chat/recent_chat_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/library/library_screen.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/profile/profile_screen.dart';
+import 'package:caregiver/presentation/main/manageUser/manage_user_screen.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../component/bottomBar/bottom_bar.dart';
 import '../../component/bottomBar/nav_drawer.dart';
@@ -20,6 +23,9 @@ class _MainScreenState extends State<MainScreen> {
   // Manage the selected index for both BottomBar and NavDrawer
   int _selectedIndex = 0;
   final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
+  String? _userRole;
+  bool _isAdmin = false;
+  bool _isStaff = false;
 
   // Update the selected index
   void _updateSelectedIndex(int index) {
@@ -28,17 +34,53 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // Screen List
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const RecentChatScreen(),
-    const LibraryScreen(),
-    const ProfileScreen()
-  ];
+  // Screen List - will be dynamically built based on user role
+  List<Widget> get _pages {
+    List<Widget> pages = [
+      const HomeScreen(),
+      const RecentChatScreen(),
+      const LibraryScreen(),
+      const ProfileScreen(),
+    ];
+
+    // Add User Management for Admin/Staff only
+    if (_isAdmin || _isStaff) {
+      pages.add(const ManageUserScreen());
+    }
+
+    return pages;
+  }
+
+  // Check user role
+  Future<void> _checkUserRole() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final role = userData['role'] ?? '';
+
+          setState(() {
+            _userRole = role;
+            _isAdmin = role == 'Admin';
+            _isStaff = role == 'Staff';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking user role: $e');
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _checkUserRole();
     // Start night shift monitoring if applicable
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _nightShiftService.startMonitoring(context);

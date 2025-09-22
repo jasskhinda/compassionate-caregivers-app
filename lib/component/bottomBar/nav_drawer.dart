@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
@@ -18,6 +19,41 @@ class NavDrawer extends StatefulWidget {
 }
 
 class _NavDrawerState extends State<NavDrawer> {
+  String? _userRole;
+  bool _isAdmin = false;
+  bool _isStaff = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  // Check user role
+  Future<void> _checkUserRole() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final role = userData['role'] ?? '';
+
+          setState(() {
+            _userRole = role;
+            _isAdmin = role == 'Admin';
+            _isStaff = role == 'Staff';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking user role: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +130,16 @@ class _NavDrawerState extends State<NavDrawer> {
               theme: AppUtils.getColorScheme(context),
               textTheme: textTheme,
             ),
+
+            // User Management tab for Admin/Staff only
+            if (_isAdmin || _isStaff)
+              _buildListTile(
+                index: 4,
+                icon: widget.selectedIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                text: 'User Management',
+                theme: AppUtils.getColorScheme(context),
+                textTheme: textTheme,
+              ),
 
             // Preferences
             Padding(
@@ -195,9 +241,7 @@ class _NavDrawerState extends State<NavDrawer> {
         trailing: trailIcon,
         onTap: () {
           // Check if the item is not part of the bottom bar by index
-          if (index == 4) {
-            Navigator.pushNamed(context, AppRoutes.notificationScreen);
-          } else if (index == 5) {
+          if (index == 5) { // Sign out
             FirebaseAuth.instance.signOut();
             Navigator.pushNamedAndRemoveUntil(context, AppRoutes.loginScreen, (route) => false);
           } else {
