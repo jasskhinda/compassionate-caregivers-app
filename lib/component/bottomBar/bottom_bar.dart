@@ -91,7 +91,7 @@ class _BottomBarState extends State<BottomBar> {
                       text: 'Home'
                   ),
                   GButton(
-                      icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
+                      icon: _currentIndex == 1 ? Icons.chat : Icons.chat_outlined,
                       text: 'Chat'
                   ),
                   GButton(
@@ -99,14 +99,14 @@ class _BottomBarState extends State<BottomBar> {
                       text: 'Library'
                   ),
                   GButton(
-                      icon: _currentIndex == 3 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
+                      icon: _currentIndex == 3 ? Icons.person : Icons.person_outline,
                       text: 'Profile'
                   ),
 
                   // User Management tab for Admin/Staff only
                   if (_isAdmin || _isStaff)
                     GButton(
-                        icon: _currentIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                        icon: _currentIndex == 4 ? Icons.manage_accounts : Icons.manage_accounts_outlined,
                         text: 'Manage'
                     ),
                 ]

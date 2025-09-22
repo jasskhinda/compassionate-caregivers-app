@@ -111,21 +111,21 @@ class _NavDrawerState extends State<NavDrawer> {
             ),
             _buildListTile(
               index: 1,
-              icon: widget.selectedIndex == 1 ? Icons.message_rounded: Icons.message_outlined,
+              icon: widget.selectedIndex == 1 ? Icons.chat : Icons.chat_outlined,
               text: 'Chat',
               theme: AppUtils.getColorScheme(context),
               textTheme: textTheme,
             ),
             _buildListTile(
               index: 2,
-              icon: widget.selectedIndex == 2 ? Icons.video_library_rounded: Icons.video_library_outlined,
+              icon: widget.selectedIndex == 2 ? Icons.video_library : Icons.video_library_outlined,
               text: 'Library',
               theme: AppUtils.getColorScheme(context),
               textTheme: textTheme,
             ),
             _buildListTile(
               index: 3,
-              icon: widget.selectedIndex == 3 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
+              icon: widget.selectedIndex == 3 ? Icons.person : Icons.person_outline,
               text: 'Profile',
               theme: AppUtils.getColorScheme(context),
               textTheme: textTheme,
@@ -135,7 +135,7 @@ class _NavDrawerState extends State<NavDrawer> {
             if (_isAdmin || _isStaff)
               _buildListTile(
                 index: 4,
-                icon: widget.selectedIndex == 4 ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
+                icon: widget.selectedIndex == 4 ? Icons.manage_accounts : Icons.manage_accounts_outlined,
                 text: 'User Management',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,
@@ -190,18 +190,21 @@ class _NavDrawerState extends State<NavDrawer> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-          color: isSelected ? theme.secondary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10)
+          color: isSelected ? theme.primary.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: isSelected ? Border.all(color: theme.primary.withOpacity(0.3), width: 1) : null,
       ),
       child: ListTile(
         leading: Icon(
             icon,
-            color: isSelected ? theme.onSurface : theme.onSurface.withAlpha(80)
+            color: isSelected ? theme.primary : theme.onSurface.withAlpha(120),
+            size: 24,
         ),
         title: Text(
           text,
           style: textTheme.titleSmall?.copyWith(
-            color: isSelected ? theme.onSurface : theme.onSurface.withAlpha(80),
+            color: isSelected ? theme.primary : theme.onSurface.withAlpha(120),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
           ),
         ),
         onTap: () {
