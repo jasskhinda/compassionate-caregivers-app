@@ -102,22 +102,41 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
                     children: [
                       const SizedBox(height: 15),
 
+                      // Professional Dashboard Stats
+                      _buildStatsOverview(),
+                      const SizedBox(height: 20),
+
                       // Filter tabs
                       Container(
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppUtils.getColorScheme(context).surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppUtils.getColorScheme(context).surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppUtils.getColorScheme(context).outline.withOpacity(0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
                             Expanded(
-                              child: _buildFilterTab('All', 'All Alerts'),
+                              child: _buildFilterTab('All', 'All Activity'),
                             ),
                             Expanded(
-                              child: _buildFilterTab('Unread', 'Unread'),
+                              child: _buildFilterTab('Responded', 'Responded'),
                             ),
                             Expanded(
                               child: _buildFilterTab('NoResponse', 'No Response'),
+                            ),
+                            Expanded(
+                              child: _buildFilterTab('ClockIn', 'Clock-ins'),
                             ),
                           ],
                         ),
@@ -147,20 +166,29 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: isSelected
               ? AppUtils.getColorScheme(context).primary
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected ? [
+            BoxShadow(
+              color: AppUtils.getColorScheme(context).primary.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ] : null,
         ),
         child: Text(
           label,
           style: TextStyle(
             color: isSelected
                 ? Colors.white
-                : AppUtils.getColorScheme(context).onSurfaceVariant,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                : AppUtils.getColorScheme(context).onSurface.withOpacity(0.7),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
           ),
           textAlign: TextAlign.center,
         ),
@@ -196,16 +224,19 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
         final filteredAlerts = alerts.where((doc) {
           final data = doc.data();
 
-          // Only show night shift alerts
-          if (data['type'] != 'night_shift_no_response') {
+          // Show all night shift related alerts
+          final nightShiftTypes = ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in'];
+          if (!nightShiftTypes.contains(data['type'])) {
             return false;
           }
 
           // Apply selected filter
-          if (_selectedFilter == 'Unread') {
-            return data['read'] != true;
+          if (_selectedFilter == 'Responded') {
+            return data['type'] == 'night_shift_response';
           } else if (_selectedFilter == 'NoResponse') {
             return data['type'] == 'night_shift_no_response';
+          } else if (_selectedFilter == 'ClockIn') {
+            return data['type'] == 'night_shift_clock_in';
           }
 
           return true; // Show all for 'All' filter
@@ -259,29 +290,58 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
     final timestamp = alertData['timestamp'] as Timestamp?;
     final alertTime = alertData['alert_time'] as Timestamp?;
     final isRead = alertData['read'] ?? false;
+    final type = alertData['type'] ?? '';
+    final responseTime = alertData['response_time_seconds'];
 
     final formattedTime = timestamp != null
         ? DateFormat('MMM dd, yyyy • hh:mm a').format(timestamp.toDate())
         : 'Unknown time';
 
-    final formattedAlertTime = alertTime != null
-        ? DateFormat('hh:mm a').format(alertTime.toDate())
-        : 'Unknown time';
+    // Get activity-specific styling
+    Color iconColor;
+    Color backgroundColor;
+    Color borderColor;
+    IconData icon;
+    String title;
+
+    switch (type) {
+      case 'night_shift_response':
+        iconColor = Colors.green.shade700;
+        backgroundColor = Colors.green.shade50;
+        borderColor = Colors.green.shade300;
+        icon = Icons.check_circle;
+        title = 'Alert Response';
+        break;
+      case 'night_shift_clock_in':
+        iconColor = Colors.blue.shade700;
+        backgroundColor = Colors.blue.shade50;
+        borderColor = Colors.blue.shade300;
+        icon = Icons.login;
+        title = 'Night Shift Clock-in';
+        break;
+      case 'night_shift_no_response':
+      default:
+        iconColor = Colors.red.shade700;
+        backgroundColor = Colors.red.shade50;
+        borderColor = Colors.red.shade300;
+        icon = Icons.warning;
+        title = 'Alert - No Response';
+        break;
+    }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Card(
-        elevation: isRead ? 1 : 3,
+        elevation: isRead ? 1 : 8,
+        shadowColor: isRead ? Colors.grey.withOpacity(0.1) : iconColor.withOpacity(0.2),
         color: isRead
-            ? AppUtils.getColorScheme(context).surface
-            : AppUtils.getColorScheme(context).errorContainer.withOpacity(0.1),
+            ? Colors.grey.shade50
+            : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isRead
-                ? Colors.grey.shade300
-                : Colors.red.shade300,
-            width: 1,
+            color: isRead ? Colors.grey.shade300 : borderColor.withOpacity(0.3),
+            width: isRead ? 1 : 2,
           ),
         ),
         child: InkWell(
@@ -292,88 +352,169 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(8),
+                        color: isRead
+                            ? Colors.grey.shade200
+                            : iconColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isRead
+                              ? Colors.grey.shade400
+                              : iconColor.withOpacity(0.2),
+                          width: 1,
+                        ),
                       ),
                       child: Icon(
-                        Icons.warning,
-                        color: Colors.red.shade700,
-                        size: 20,
+                        icon,
+                        color: isRead
+                            ? Colors.grey.shade600
+                            : iconColor,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Night Shift Alert',
+                            title,
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppUtils.getColorScheme(context).onSurface,
+                              fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
+                              fontSize: 18,
+                              color: isRead
+                                  ? Colors.grey.shade700
+                                  : AppUtils.getColorScheme(context).onSurface,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          Text(
-                            caregiverName,
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 14,
-                            ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                caregiverName,
+                                style: TextStyle(
+                                  color: isRead
+                                      ? Colors.grey.shade600
+                                      : iconColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (responseTime != null) ...[
+                                Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                                  ),
+                                  child: Text(
+                                    '${responseTime}s',
+                                    style: TextStyle(
+                                      color: Colors.green.shade700,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
                     ),
                     if (!isRead)
                       Container(
-                        width: 12,
-                        height: 12,
+                        width: 14,
+                        height: 14,
                         decoration: BoxDecoration(
-                          color: Colors.red,
+                          color: iconColor,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: iconColor.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (isRead)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'READ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppUtils.getColorScheme(context).onSurface,
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isRead
+                        ? Colors.grey.shade100
+                        : AppUtils.getColorScheme(context).surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: isRead
+                          ? Colors.grey.shade700
+                          : AppUtils.getColorScheme(context).onSurface,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: Colors.grey.shade600,
+                      Icons.schedule,
+                      size: 18,
+                      color: Colors.grey.shade500,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Alert at $formattedAlertTime',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const Spacer(),
+                    const SizedBox(width: 6),
                     Text(
                       formattedTime,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -382,6 +523,212 @@ class _NightShiftAlertsScreenState extends State<NightShiftAlertsScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatsOverview() {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _firestore
+          .collection('admin_alerts')
+          .where('type', whereIn: ['night_shift_no_response', 'night_shift_response', 'night_shift_clock_in'])
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final alerts = snapshot.data?.docs ?? [];
+        final today = DateTime.now();
+        final todayStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+        // Count today's activities
+        int todayClockIns = 0;
+        int todayResponses = 0;
+        int todayNoResponses = 0;
+        Set<String> activeCaregivers = {};
+
+        for (final alert in alerts) {
+          final data = alert.data();
+          final timestamp = data['timestamp'] as Timestamp?;
+          if (timestamp != null) {
+            final alertDate = timestamp.toDate();
+            final alertDateStr = "${alertDate.year}-${alertDate.month.toString().padLeft(2, '0')}-${alertDate.day.toString().padLeft(2, '0')}";
+
+            if (alertDateStr == todayStr) {
+              switch (data['type']) {
+                case 'night_shift_clock_in':
+                  todayClockIns++;
+                  activeCaregivers.add(data['caregiver_name'] ?? 'Unknown');
+                  break;
+                case 'night_shift_response':
+                  todayResponses++;
+                  break;
+                case 'night_shift_no_response':
+                  todayNoResponses++;
+                  break;
+              }
+            }
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppUtils.getColorScheme(context).primaryContainer.withOpacity(0.15),
+                AppUtils.getColorScheme(context).primary.withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppUtils.getColorScheme(context).primary.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: AppUtils.getColorScheme(context).primary.withOpacity(0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.dashboard,
+                    color: AppUtils.getColorScheme(context).primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Night Shift Dashboard',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppUtils.getColorScheme(context).onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppUtils.getColorScheme(context).primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Today',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppUtils.getColorScheme(context).primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.login,
+                      label: 'Clock-ins',
+                      value: todayClockIns.toString(),
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.check_circle,
+                      label: 'Responded',
+                      value: todayResponses.toString(),
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.warning,
+                      label: 'No Response',
+                      value: todayNoResponses.toString(),
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      icon: Icons.people,
+                      label: 'Active Staff',
+                      value: activeCaregivers.length.toString(),
+                      color: Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: -1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppUtils.getColorScheme(context).onSurface.withOpacity(0.6),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

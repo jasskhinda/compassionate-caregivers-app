@@ -89,7 +89,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    _nightShiftService.stopMonitoring();
+    // Don't stop monitoring on dispose - let it continue in background
+    // Only stop when user logs out
+    // _nightShiftService.stopMonitoring();
     super.dispose();
   }
 

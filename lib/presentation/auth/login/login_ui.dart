@@ -136,6 +136,20 @@ class _LoginUiState extends State<LoginUi> {
                 'date': DateTime.now().toIso8601String().split('T')[0],
               });
 
+          // Create admin notification for clock-in
+          await FirebaseFirestore.instance
+              .collection('admin_alerts')
+              .add({
+                'type': 'night_shift_clock_in',
+                'caregiver_id': user.uid,
+                'caregiver_name': userDocData['name'],
+                'message': '${userDocData['name']} clocked in for night shift',
+                'timestamp': FieldValue.serverTimestamp(),
+                'read': false,
+                'status': 'clocked_in',
+                'clock_in_time': FieldValue.serverTimestamp(),
+              });
+
           debugPrint('✅ Night shift caregiver auto-clocked in');
         }
       }

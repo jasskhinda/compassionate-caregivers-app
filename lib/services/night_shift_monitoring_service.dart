@@ -87,7 +87,13 @@ class NightShiftMonitoringService {
     }
 
     _alertTimer = Timer(duration, () {
-      _showAlertDialog();
+      debugPrint('NightShift: Timer triggered, showing alert dialog');
+      if (_context != null && _context!.mounted) {
+        _showAlertDialog();
+      } else {
+        debugPrint('NightShift: Context is null or not mounted, stopping monitoring');
+        stopMonitoring();
+      }
     });
   }
 
@@ -204,6 +210,24 @@ class NightShiftMonitoringService {
       'last_alert_responded': true,
     }, SetOptions(merge: true));
 
+    // Get user info for admin notification
+    final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+    final userName = userDoc.data()?['name'] ?? 'Unknown';
+
+    // Create admin alert for successful response
+    await _firestore.collection('admin_alerts').add({
+      'type': 'night_shift_response',
+      'caregiver_id': user.uid,
+      'caregiver_name': userName,
+      'alert_time': _alertStartTime,
+      'response_time': DateTime.now(),
+      'response_time_seconds': responseTime,
+      'message': '$userName responded to night shift check in ${responseTime}s',
+      'timestamp': FieldValue.serverTimestamp(),
+      'read': false,
+      'status': 'responded',
+    });
+
     Navigator.pop(dialogContext);
 
     // Show success message
@@ -224,6 +248,7 @@ class NightShiftMonitoringService {
     }
 
     // Schedule next alert
+    debugPrint('NightShift: Scheduling next alert after successful response');
     _scheduleNextAlert();
   }
 
@@ -260,6 +285,7 @@ class NightShiftMonitoringService {
       'message': 'No confirmation received - $userName might be sleeping',
       'timestamp': FieldValue.serverTimestamp(),
       'read': false,
+      'status': 'no_response',
     });
 
     // Close dialog if still open
@@ -294,6 +320,7 @@ class NightShiftMonitoringService {
     }
 
     // Schedule next alert
+    debugPrint('NightShift: Scheduling next alert after timeout/no response');
     _scheduleNextAlert();
   }
 
@@ -334,6 +361,13 @@ class NightShiftMonitoringService {
 
   // Check if monitoring is active
   bool get isMonitoring => _alertTimer != null;
+
+  // Get monitoring status for debugging
+  String get monitoringStatus {
+    if (_alertTimer == null) return 'Monitoring: INACTIVE';
+    if (_isAlertActive) return 'Monitoring: ACTIVE - Alert waiting for response';
+    return 'Monitoring: ACTIVE - Next alert scheduled';
+  }
 
   // Get next alert time (approximate)
   DateTime? get nextAlertTime {
