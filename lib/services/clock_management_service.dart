@@ -12,11 +12,20 @@ class ClockManagementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
 
+  // Track if auto clock-in has been performed for this session
+  bool _hasAutoClockInRunForSession = false;
+
   // Auto clock-in when user logs in
   Future<void> autoClockInOnLogin() async {
     try {
       final user = _auth.currentUser;
       if (user == null) return;
+
+      // Prevent multiple auto clock-ins per session
+      if (_hasAutoClockInRunForSession) {
+        debugPrint('ℹ️ Auto clock-in already processed for this session');
+        return;
+      }
 
       // Get user data
       final userDoc = await _firestore.collection('Users').doc(user.uid).get();
@@ -69,6 +78,9 @@ class ClockManagementService {
           } else {
             debugPrint('ℹ️ $userName is already clocked in');
           }
+
+          // Mark that auto clock-in has been processed for this session
+          _hasAutoClockInRunForSession = true;
         }
       }
     } catch (e) {
@@ -138,6 +150,9 @@ class ClockManagementService {
 
         debugPrint('✅ Auto clock-out completed for $userName (logout)');
       }
+
+      // Reset the auto clock-in flag for next login session
+      _hasAutoClockInRunForSession = false;
     } catch (e) {
       debugPrint('❌ Error during auto clock-out: $e');
     }
