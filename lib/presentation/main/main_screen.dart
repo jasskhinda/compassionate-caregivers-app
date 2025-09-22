@@ -10,6 +10,7 @@ import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../component/bottomBar/bottom_bar.dart';
 import '../../component/bottomBar/nav_drawer.dart';
 import '../../services/night_shift_monitoring_service.dart';
+import '../../services/clock_management_service.dart';
 import 'bottomBarScreens/home_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _MainScreenState extends State<MainScreen> {
   // Manage the selected index for both BottomBar and NavDrawer
   int _selectedIndex = 0;
   final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
+  final ClockManagementService _clockService = ClockManagementService();
   String? _userRole;
   bool _isAdmin = false;
   bool _isStaff = false;
@@ -89,8 +91,10 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _checkUserRole();
-    // Start night shift monitoring if applicable
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Auto clock-in for caregivers on login
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _clockService.autoClockInOnLogin();
+      // Start night shift monitoring if applicable
       _nightShiftService.startMonitoring(context);
     });
   }

@@ -44,6 +44,7 @@ class _NavDrawerState extends State<NavDrawer> {
           final userData = userDoc.data() as Map<String, dynamic>;
           final role = userData['role'] ?? '';
 
+          debugPrint('NavDrawer: User role detected: $role');
           setState(() {
             _userRole = role;
             _isAdmin = role == 'Admin';
@@ -175,7 +176,7 @@ class _NavDrawerState extends State<NavDrawer> {
                   child: Text('Account Action', style: textTheme.titleSmall?.copyWith(color: AppUtils.getColorScheme(context).onSurface.withAlpha(80))),
                 ),
                 _settingListTile(
-                  index: 5,
+                  index: 6,
                   leadingIcon: Icons.logout,
                   text: 'Sign Out',
                   theme: AppUtils.getColorScheme(context),

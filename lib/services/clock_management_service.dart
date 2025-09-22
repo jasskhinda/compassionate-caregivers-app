@@ -12,6 +12,70 @@ class ClockManagementService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
 
+  // Auto clock-in when user logs in
+  Future<void> autoClockInOnLogin() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return;
+
+      // Get user data
+      final userDoc = await _firestore.collection('Users').doc(user.uid).get();
+      final userData = userDoc.data();
+
+      if (userData != null) {
+        final userName = userData['name'] ?? 'Unknown';
+        final role = userData['role'] ?? '';
+        final shiftType = userData['shift_type'];
+
+        // Only auto clock-in caregivers
+        if (role == 'Caregiver') {
+          // Check if already clocked in today
+          final isAlreadyClockedIn = userData['is_clocked_in'] ?? false;
+
+          if (!isAlreadyClockedIn) {
+            // Clock in the user
+            await _firestore.collection('Users').doc(user.uid).update({
+              'is_clocked_in': true,
+              'last_clock_in_time': FieldValue.serverTimestamp(),
+              'auto_clock_in_reason': 'login',
+            });
+
+            // Create attendance record
+            await _firestore.collection('attendance').add({
+              'user_id': user.uid,
+              'user_name': userName,
+              'clock_in_time': FieldValue.serverTimestamp(),
+              'type': 'auto_login',
+              'date': DateTime.now().toIso8601String().split('T')[0],
+            });
+
+            // Create admin notification
+            await _firestore.collection('admin_alerts').add({
+              'type': 'night_shift_clock_in',
+              'caregiver_id': user.uid,
+              'caregiver_name': userName,
+              'message': '$userName automatically clocked in (login)',
+              'timestamp': FieldValue.serverTimestamp(),
+              'read': false,
+              'status': 'clocked_in',
+              'clock_in_time': FieldValue.serverTimestamp(),
+              'clock_in_type': 'auto_login',
+              'reason': 'Application login',
+            });
+
+            // Note: Night shift monitoring will be started in MainScreen after login
+
+            debugPrint('✅ Auto clock-in completed for $userName (login)');
+          } else {
+            debugPrint('ℹ️ $userName is already clocked in');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error during auto clock-in: $e');
+    }
+  }
+
   // Auto clock-out when user logs out
   Future<void> autoClockOutOnLogout() async {
     try {

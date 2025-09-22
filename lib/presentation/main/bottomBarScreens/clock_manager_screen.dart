@@ -28,7 +28,9 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
   Future<void> _loadClockStatus() async {
     setState(() => _isLoading = true);
     try {
+      debugPrint('Clock Manager: Loading clock status...');
       final status = await _clockService.getCurrentClockStatus();
+      debugPrint('Clock Manager: Status loaded: $status');
       setState(() {
         _clockStatus = status;
         _isLoading = false;
@@ -160,13 +162,41 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('Clock Manager: Building widget, isLoading: $_isLoading, clockStatus: $_clockStatus');
     final colorScheme = AppUtils.getColorScheme(context);
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: Text('Clock Manager'),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+      ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
+          : _clockStatus == null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: colorScheme.error),
+                  SizedBox(height: 16),
+                  Text(
+                    'Unable to load clock status',
+                    style: textTheme.titleMedium,
+                  ),
+                  SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      _loadClockStatus();
+                      _loadRecentActivity();
+                    },
+                    child: Text('Retry'),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: () async {
                 await _loadClockStatus();
@@ -288,20 +318,54 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
                           if (_clockStatus?['last_clock_in_time'] != null) ...[
                             SizedBox(height: 12),
                             Text(
-                              'Last Clock In: ${_formatTimestamp(_clockStatus!['last_clock_in_time'])}',
+                              'Clock In: ${_formatTimestamp(_clockStatus!['last_clock_in_time'])}',
                               style: textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurface.withOpacity(0.8),
                               ),
                             ),
+                            if (_clockStatus?['auto_clock_in_reason'] != null) ...[
+                              SizedBox(height: 4),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Auto clocked in on ${_clockStatus!['auto_clock_in_reason']}',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: Colors.blue.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                           if (_clockStatus?['last_clock_out_time'] != null) ...[
-                            SizedBox(height: 4),
+                            SizedBox(height: 8),
                             Text(
-                              'Last Clock Out: ${_formatTimestamp(_clockStatus!['last_clock_out_time'])}',
+                              'Clock Out: ${_formatTimestamp(_clockStatus!['last_clock_out_time'])}',
                               style: textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurface.withOpacity(0.8),
                               ),
                             ),
+                            if (_clockStatus?['auto_clock_out_reason'] != null) ...[
+                              SizedBox(height: 4),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Auto clocked out on ${_clockStatus!['auto_clock_out_reason']}',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: Colors.orange.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ],
                       ),
