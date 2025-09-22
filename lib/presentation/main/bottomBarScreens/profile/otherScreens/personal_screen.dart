@@ -20,6 +20,9 @@ class _PersonalInfoState extends State<PersonalInfo> {
 
   // Get current user role
   String? _currentRole;
+  bool _isSuperAdmin = false;
+  bool _isAdmin = false;
+  bool _isStaff = false;
 
   // User info
   String? userName;
@@ -28,6 +31,7 @@ class _PersonalInfoState extends State<PersonalInfo> {
   String? mobileNumber;
   String? dob;
   String? password;
+  String? shiftType;
   int? assignedVideos;
   int? completedVideos;
   bool isLoading = true; // Loading state
@@ -42,8 +46,13 @@ class _PersonalInfoState extends State<PersonalInfo> {
 
       if (document.exists) {
         var data = document.data() as Map<String, dynamic>;
+        final role = data['role'] ?? '';
+        final email = data['email'] ?? '';
         setState(() {
-          _currentRole = data['role'];
+          _currentRole = role;
+          _isAdmin = role == 'Admin';
+          _isStaff = role == 'Staff';
+          _isSuperAdmin = email.toLowerCase() == 'j.khinda@ccgrhc.com';
         });
       } else {
         debugPrint("No such document!");
@@ -72,6 +81,7 @@ class _PersonalInfoState extends State<PersonalInfo> {
           completedVideos = data['completed_video'];
           password = data['password'];
           dob = data['dob'];
+          shiftType = data['shift_type'];
           isLoading = false;
         });
       } else {
@@ -88,6 +98,85 @@ class _PersonalInfoState extends State<PersonalInfo> {
       });
       debugPrint("Error fetching document: $e");
     }
+  }
+
+  // Update shift type function
+  Future<void> _updateShiftType(String uid, String newShiftType) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .update({'shift_type': newShiftType});
+
+      setState(() {
+        shiftType = newShiftType;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Shift type updated successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update shift type: $e')),
+      );
+      debugPrint("Error updating shift type: $e");
+    }
+  }
+
+  // Show shift type dialog
+  void _showShiftTypeDialog(String uid) {
+    String selectedShift = shiftType ?? 'Day';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Change Shift Type'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Select new shift type for $userName:'),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedShift,
+                    decoration: InputDecoration(
+                      labelText: 'Shift Type',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ['Day', 'Night'].map((String shift) {
+                      return DropdownMenuItem(
+                        value: shift,
+                        child: Text('$shift Shift'),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedShift = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _updateShiftType(uid, selectedShift);
+                  },
+                  child: Text('Update'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -132,6 +221,12 @@ class _PersonalInfoState extends State<PersonalInfo> {
                 SizedBox(height: 50),
                 PersonalInfoLayout(title: 'Full name', value: userName ?? "N/A"),
                 PersonalInfoLayout(title: 'Role', value: role ?? "N/A"),
+                if (role == 'Caregiver') PersonalInfoLayoutWithEdit(
+                  title: 'Shift Type',
+                  value: shiftType != null ? '$shiftType Shift' : "Not Set",
+                  canEdit: _isSuperAdmin || _isAdmin || _isStaff,
+                  onEdit: () => _showShiftTypeDialog(_arguments?['userID'] ?? ''),
+                ),
                 PersonalInfoLayout(title: 'Email address', value: email ?? "N/A"),
                 PersonalInfoLayout(title: 'Date of birth', value: dob ?? "N/A"),
                 PersonalInfoLayout(title: 'Mobile number', value: mobileNumber?.isNotEmpty == true ? mobileNumber! : "N/A"),
@@ -198,6 +293,95 @@ class PersonalInfoLayout extends StatelessWidget {
                         color: colorScheme.onSurface
                     ),
                   )
+              ),
+            ],
+          ),
+        ),
+        isLast == true ? Container(
+          height: 1,
+          width: double.infinity,
+          color: colorScheme.onSurface.withAlpha(80),
+        ) : const SizedBox(),
+      ],
+    );
+  }
+}
+
+class PersonalInfoLayoutWithEdit extends StatelessWidget {
+  final String title;
+  final String value;
+  final bool canEdit;
+  final VoidCallback? onEdit;
+  final bool? isLast;
+
+  const PersonalInfoLayoutWithEdit({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.canEdit,
+    this.onEdit,
+    this.isLast = false
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
+    TextTheme textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      children: [
+        Container(
+          height: 1,
+          width: double.infinity,
+          color: colorScheme.onSurface.withAlpha(80),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.start,
+                style: textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface
+                        ),
+                      ),
+                    ),
+                    if (canEdit && onEdit != null) ...[
+                      SizedBox(width: 8),
+                      IconButton(
+                        onPressed: onEdit,
+                        icon: Icon(
+                          Icons.edit,
+                          size: 18,
+                          color: colorScheme.primary,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),

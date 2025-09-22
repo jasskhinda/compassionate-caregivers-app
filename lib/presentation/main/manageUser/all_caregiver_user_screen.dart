@@ -203,12 +203,19 @@ class _AllCaregiverUserScreenState extends State<AllCaregiverUserScreen> {
             final caregiverUid = caregiver['uid'] ?? '';
             final caregiverRole = caregiver['role'] ?? '';
             final profileImageUrl = caregiver['profile_image_url'];
+            final shiftType = caregiver['shift_type'];
+
+            // Create description with shift type if available
+            String description = caregiverEmail;
+            if (shiftType != null) {
+              description = '$caregiverEmail • $shiftType Shift';
+            }
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: UserLayout(
                 title: caregiverName,
-                description: caregiverEmail,
+                description: description,
                 profileImageUrl: profileImageUrl,
                 onTap: () => Navigator.pushNamed(context, AppRoutes.personalInfoScreen, arguments: {'userID': caregiverUid}),
                 trailing: (_isAdmin || _isStaff) ? IconButton(
