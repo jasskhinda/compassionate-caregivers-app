@@ -72,11 +72,10 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Simple query without orderBy to avoid index requirement
+      // Get all attendance records for the user (no limit in query)
       final attendanceQuery = await FirebaseFirestore.instance
           .collection('attendance')
           .where('user_id', isEqualTo: user.uid)
-          .limit(5)
           .get();
 
       List<Map<String, dynamic>> activity = [];
@@ -102,6 +101,11 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
         return bTime.compareTo(aTime);
       });
 
+      // Take only the 5 most recent activities
+      if (activity.length > 5) {
+        activity = activity.take(5).toList();
+      }
+
       setState(() => _recentActivity = activity);
     } catch (e) {
       debugPrint('Error loading recent activity: $e');
@@ -126,6 +130,8 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
         ),
       );
       // Real-time listener will automatically update _clockStatus
+      // Add a small delay to ensure database is updated
+      await Future.delayed(Duration(milliseconds: 500));
       _loadRecentActivity();
     }
   }
@@ -148,6 +154,8 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
         ),
       );
       // Real-time listener will automatically update _clockStatus
+      // Add a small delay to ensure database is updated
+      await Future.delayed(Duration(milliseconds: 500));
       _loadRecentActivity();
     }
   }
