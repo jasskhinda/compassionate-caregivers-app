@@ -125,10 +125,40 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     const iframe = document.getElementById('vimeo-player');
     const player = new Vimeo.Player(iframe);
 
-    window.flutter_inappwebview.callHandler('vimeoReady');
+    // Safe communication with Flutter
+    function callFlutter(method, ...args) {
+      try {
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+          window.flutter_inappwebview.callHandler(method, ...args);
+        } else {
+          console.log('Flutter WebView not ready, method:', method, 'args:', args);
+        }
+      } catch (error) {
+        console.error('Error calling Flutter:', error);
+      }
+    }
 
+    // Wait for player to be ready
+    player.ready().then(function() {
+      console.log('Vimeo player ready');
+      callFlutter('vimeoReady');
+    });
+
+    // Track progress updates
     player.on('timeupdate', function(data) {
-      window.flutter_inappwebview.callHandler('videoProgress', data.seconds, data.duration);
+      console.log('Vimeo timeupdate:', data.seconds, '/', data.duration);
+      callFlutter('videoProgress', data.seconds, data.duration);
+    });
+
+    // Track play/pause events
+    player.on('play', function() {
+      console.log('Vimeo play started');
+      callFlutter('videoPlay');
+    });
+
+    player.on('pause', function() {
+      console.log('Vimeo paused');
+      callFlutter('videoPause');
     });
   </script>
 </body>
@@ -350,18 +380,40 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               );
 
               controller.addJavaScriptHandler(
+                handlerName: 'vimeoReady',
+                callback: (args) {
+                  debugPrint("🎬 Vimeo player ready for videoId: $videoId");
+                },
+              );
+
+              controller.addJavaScriptHandler(
                 handlerName: 'videoProgress',
                 callback: (args) {
                   final seconds = args[0] as double;
                   final duration = args[1] as double;
                   if (duration > 0) {
                     final percent = (seconds / duration) * 100;
+                    debugPrint("🎬 Vimeo progress update: ${percent.toStringAsFixed(2)}% ($seconds/$duration seconds)");
                     if (mounted) {
                       setState(() {
                         watchedPercentage = percent.clamp(0, 100);
                       });
                     }
                   }
+                },
+              );
+
+              controller.addJavaScriptHandler(
+                handlerName: 'videoPlay',
+                callback: (args) {
+                  debugPrint("🎬 Vimeo video started playing");
+                },
+              );
+
+              controller.addJavaScriptHandler(
+                handlerName: 'videoPause',
+                callback: (args) {
+                  debugPrint("🎬 Vimeo video paused");
                 },
               );
 

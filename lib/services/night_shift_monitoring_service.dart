@@ -315,25 +315,57 @@ class NightShiftMonitoringService {
       // Show warning message
       showDialog(
         context: _context!,
+        barrierDismissible: false,
+        useRootNavigator: true, // Show above all content including video players
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.warning, color: Colors.red, size: 28),
-                SizedBox(width: 12),
-                Text('Alert Not Acknowledged'),
-              ],
-            ),
-            content: Text(
-              'You did not respond to the check-in alert within 5 minutes. This has been reported to administration.',
-              style: TextStyle(fontSize: 16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
+          return Material(
+            type: MaterialType.transparency,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.8), // Even stronger overlay for warning
               ),
-            ],
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(_context!).size.width * 0.9,
+                    maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+                  ),
+                  child: AlertDialog(
+                    elevation: 30, // Higher elevation for critical warning
+                    backgroundColor: Colors.red.shade50,
+                    title: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.red, size: 28),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Alert Not Acknowledged',
+                            style: TextStyle(color: Colors.red.shade800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: Text(
+                      'You did not respond to the check-in alert within 5 minutes. This has been reported to administration.',
+                      style: TextStyle(fontSize: 16, color: Colors.red.shade700),
+                    ),
+                    actions: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                        child: Text('OK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
         },
       );
