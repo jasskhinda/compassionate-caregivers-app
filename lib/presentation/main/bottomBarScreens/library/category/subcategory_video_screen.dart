@@ -319,28 +319,43 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
             final videoTitle = video['title'] ?? '';
             final videoUrl = video['videoUrl'] ?? '';
 
-            final progress = isVimeo == true ? video['progress'] ?? '' : null;
+            // Progress will be fetched dynamically from caregiver's personal collection
             final caregiver = isVimeo == true ? video['assignedTo'] ?? '' : null;
             final assignedByUid = isVimeo == true ? video['assignedBy'] ?? '' : null;
             String date = isVimeo == true ?  DateFormat('dd MMM yyyy').format(video['assignedDate'].toDate()) : '';
 
             if (isVimeo == true) {
-              // Get admin name
-              return FutureBuilder<DocumentSnapshot>(
-                  future: FirebaseFirestore.instance.collection('Users').doc(
-                      assignedByUid).get(),
+              // Get admin name and actual progress
+              return FutureBuilder<List<DocumentSnapshot>>(
+                  future: Future.wait([
+                    FirebaseFirestore.instance.collection('Users').doc(assignedByUid).get(),
+                    FirebaseFirestore.instance
+                        .collection('caregiver_videos')
+                        .doc(_auth.currentUser?.uid)
+                        .collection('videos')
+                        .doc(videoId)
+                        .get()
+                  ]),
                   builder: (context, snapshot) {
                     String adminName = 'Loading...';
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        snapshot.hasData) {
-                      final data = snapshot.data!.data() as Map<String,
-                          dynamic>;
-                      adminName = data['name'] ?? 'Unknown';
+                    double actualProgress = 0.0;
+
+                    if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      // Get admin name from first document
+                      final adminData = snapshot.data![0].data() as Map<String, dynamic>?;
+                      adminName = adminData?['name'] ?? 'Unknown';
+
+                      // Get actual progress from second document
+                      final progressData = snapshot.data![1].data() as Map<String, dynamic>?;
+                      actualProgress = (progressData?['progress'] ?? 0.0).toDouble();
+
+                      debugPrint("Video $videoId actual progress: $actualProgress%");
                     }
+
                     return AssignedVideoLayout(
                       videoTitle: videoTitle,
                       adminName: adminName,
-                      progress: progress,
+                      progress: actualProgress,
                       date: date,
                       onTap: () {
                         Navigator.pushNamed(
@@ -353,7 +368,7 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                               'videoTitle': videoTitle,
                               'videoUrl': videoUrl,
                               'caregiver': caregiver,
-                              'progress': progress,
+                              'progress': actualProgress,
                               'categoryName': categoryName,
                               'subcategoryName': subcategoryName
                             }
@@ -363,29 +378,49 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                   }
               );
             } else {
-              return AssignedVideoLayout(
-                videoTitle: videoTitle,
-                adminName: null,
-                progress: null,
-                date: '',
-                onTap: () {
-                  markVideoAsAssignedByCaregiver(videoTitle: videoTitle, videoUrl: videoUrl, categoryVideoId: videoId, categoryName: categoryName, subcategoryName: subcategoryName);
-                  Navigator.pushNamed(
-                      context,
-                      AppRoutes.videoScreen,
-                      arguments: {
-                        'videoId': videoId,
-                        'date': null,
-                        'adminName': null,
-                        'videoTitle': videoTitle,
-                        'videoUrl': videoUrl,
-                        'caregiver': null,
-                        'progress': null,
-                        'categoryName': categoryName,
-                        'subcategoryName': subcategoryName
-                      }
-                  );
-                },
+              // Get actual progress for YouTube videos too
+              return FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('caregiver_videos')
+                      .doc(_auth.currentUser?.uid)
+                      .collection('videos')
+                      .doc(videoId)
+                      .get(),
+                  builder: (context, snapshot) {
+                    double actualProgress = 0.0;
+
+                    if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      final progressData = snapshot.data?.data() as Map<String, dynamic>?;
+                      actualProgress = (progressData?['progress'] ?? 0.0).toDouble();
+
+                      debugPrint("YouTube Video $videoId actual progress: $actualProgress%");
+                    }
+
+                    return AssignedVideoLayout(
+                      videoTitle: videoTitle,
+                      adminName: null,
+                      progress: actualProgress,
+                      date: '',
+                      onTap: () {
+                        markVideoAsAssignedByCaregiver(videoTitle: videoTitle, videoUrl: videoUrl, categoryVideoId: videoId, categoryName: categoryName, subcategoryName: subcategoryName);
+                        Navigator.pushNamed(
+                            context,
+                            AppRoutes.videoScreen,
+                            arguments: {
+                              'videoId': videoId,
+                              'date': null,
+                              'adminName': null,
+                              'videoTitle': videoTitle,
+                              'videoUrl': videoUrl,
+                              'caregiver': null,
+                              'progress': actualProgress,
+                              'categoryName': categoryName,
+                              'subcategoryName': subcategoryName
+                            }
+                        );
+                      },
+                    );
+                  }
               );
             }
           },

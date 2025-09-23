@@ -145,26 +145,42 @@ class _CategoryScreenState extends State<CategoryScreen> {
             final videoId = video['videoId'] ?? '';
             final videoTitle = video['title'] ?? '';
             final videoUrl = video['videoUrl'] ?? '';
-            final progress = video['progress'] ?? '';
             final assignedByUid = video['assignedBy'] ?? '';
             final caregiver = video['assignedTo'] ?? '';
             String date = DateFormat('dd MMM yyyy').format(video['assignedDate'].toDate());
             print('CHECK HERE FIRST$caregiver');
 
-            // Get admin name
-            return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance.collection('Users').doc(assignedByUid).get(),
+            // Get admin name and actual progress
+            return FutureBuilder<List<DocumentSnapshot>>(
+                future: Future.wait([
+                  FirebaseFirestore.instance.collection('Users').doc(assignedByUid).get(),
+                  FirebaseFirestore.instance
+                      .collection('caregiver_videos')
+                      .doc(_auth.currentUser?.uid)
+                      .collection('videos')
+                      .doc(videoId)
+                      .get()
+                ]),
                 builder: (context, snapshot) {
                   String adminName = 'Loading...';
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.hasData) {
-                    final data = snapshot.data!.data() as Map<String, dynamic>;
-                    adminName = data['name'] ?? 'Unknown';
+                  double actualProgress = 0.0;
+
+                  if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                    // Get admin name from first document
+                    final adminData = snapshot.data![0].data() as Map<String, dynamic>?;
+                    adminName = adminData?['name'] ?? 'Unknown';
+
+                    // Get actual progress from second document
+                    final progressData = snapshot.data![1].data() as Map<String, dynamic>?;
+                    actualProgress = (progressData?['progress'] ?? 0.0).toDouble();
+
+                    debugPrint("Category Video $videoId actual progress: $actualProgress%");
                   }
+
                   return AssignedVideoLayout(
                     videoTitle: videoTitle,
                     adminName: adminName,
-                    progress: progress,
+                    progress: actualProgress,
                     date: date,
                     onTap: () {
                       Navigator.pushNamed(
@@ -177,7 +193,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             'videoTitle': videoTitle,
                             'videoUrl': videoUrl,
                             'caregiver': caregiver,
-                            'progress': progress
+                            'progress': actualProgress
                           }
                       );
                     },
