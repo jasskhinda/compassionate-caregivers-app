@@ -181,6 +181,10 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       _categoryName = args?['categoryName'];
       _subCategoryName = args?['subcategoryName'];
 
+      // Debug: Log video initialization
+      debugPrint("Vimeo Video initialized - videoId: $videoId, videoUrl: $videoUrl");
+      debugPrint("Vimeo tracking parameters: userId: ${_auth.currentUser?.uid}, role: $_role");
+
       // Start paused, so no auto-play on load
       isPlaying = false;
 
@@ -229,25 +233,46 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
   Future<void> _updateProgressInFirestore(double percentage) async {
     try {
-      if (videoId == null || videoId!.isEmpty) return;
+      if (videoId == null || videoId!.isEmpty) {
+        debugPrint("Vimeo progress: videoId is null or empty");
+        return;
+      }
+
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        debugPrint("Vimeo progress: User not authenticated");
+        return;
+      }
+
+      debugPrint("Vimeo progress: Updating progress for videoId: $videoId, percentage: ${percentage.toStringAsFixed(2)}%");
 
       final docRef = FirebaseFirestore.instance
           .collection('caregiver_videos')
-          .doc(_auth.currentUser!.uid)
+          .doc(userId)
           .collection('videos')
           .doc(videoId);
 
       final docSnapshot = await docRef.get();
       final existingProgress = docSnapshot.data()?['progress'] ?? 0.0;
 
+      debugPrint("Vimeo progress: Existing progress: ${existingProgress.toStringAsFixed(2)}%");
+
       if (percentage > existingProgress) {
         await docRef.set({
           'progress': percentage,
           'lastUpdated': FieldValue.serverTimestamp(),
+          'videoTitle': args?['videoTitle'] ?? 'Unknown',
+          'videoUrl': videoUrl ?? '',
+          'userId': userId,
+          'lastWatchSession': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+
+        debugPrint("Vimeo progress: Successfully updated to ${percentage.toStringAsFixed(2)}%");
+      } else {
+        debugPrint("Vimeo progress: No update needed (${percentage.toStringAsFixed(2)}% <= ${existingProgress.toStringAsFixed(2)}%)");
       }
     } catch (e) {
-      debugPrint("Error updating progress: $e");
+      debugPrint("Vimeo progress: Error updating progress: $e");
     }
   }
 

@@ -106,10 +106,26 @@ class NightShiftMonitoringService {
     showDialog(
       context: _context!,
       barrierDismissible: false,
+      useRootNavigator: true, // Show above all content including video players
       builder: (BuildContext dialogContext) {
         return WillPopScope(
           onWillPop: () async => false, // Prevent back button
-          child: AlertDialog(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7), // Stronger overlay
+              ),
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(_context!).size.width * 0.9,
+                    maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+                  ),
+                  child: AlertDialog(
+                    elevation: 24, // Higher elevation to ensure it's on top
             title: Row(
               children: [
                 Icon(Icons.nightlight_round, color: Colors.blue, size: 28),
@@ -173,6 +189,10 @@ class NightShiftMonitoringService {
                 ),
               ),
             ],
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       },

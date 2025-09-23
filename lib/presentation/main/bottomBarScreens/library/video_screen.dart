@@ -119,6 +119,10 @@ class _VideoScreenState extends State<VideoScreen> {
       _categoryName = args?['categoryName'];
       _subCategoryName = args?['subcategoryName'];
 
+      // Debug: Log video initialization
+      debugPrint("YouTube Video initialized - videoId: $videoId, videoUrl: $videoUrl");
+      debugPrint("Video tracking parameters: userId: ${_auth.currentUser?.uid}, role: $_role");
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (videoUrl != null && videoUrl!.isNotEmpty) {
           _initializePlayer();
@@ -194,26 +198,47 @@ class _VideoScreenState extends State<VideoScreen> {
 
   Future<void> _updateProgressInFirestore(double percentage) async {
     try {
-      if (videoId == null || videoId!.isEmpty) return;
+      if (videoId == null || videoId!.isEmpty) {
+        debugPrint("Video progress: videoId is null or empty");
+        return;
+      }
+
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        debugPrint("Video progress: User not authenticated");
+        return;
+      }
+
+      debugPrint("Video progress: Updating progress for videoId: $videoId, percentage: ${percentage.toStringAsFixed(2)}%");
 
       final docRef = FirebaseFirestore.instance
           .collection('caregiver_videos')
-          .doc(_auth.currentUser!.uid)
+          .doc(userId)
           .collection('videos')
           .doc(videoId);
 
       final docSnapshot = await docRef.get();
       final existingProgress = docSnapshot.data()?['progress'] ?? 0.0;
 
+      debugPrint("Video progress: Existing progress: ${existingProgress.toStringAsFixed(2)}%");
+
       // Only update if the new progress is higher
       if (percentage > existingProgress) {
         await docRef.set({
           'progress': percentage,
           'lastUpdated': FieldValue.serverTimestamp(),
+          'videoTitle': args?['videoTitle'] ?? 'Unknown',
+          'videoUrl': videoUrl ?? '',
+          'userId': userId,
+          'lastWatchSession': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+
+        debugPrint("Video progress: Successfully updated to ${percentage.toStringAsFixed(2)}%");
+      } else {
+        debugPrint("Video progress: No update needed (${percentage.toStringAsFixed(2)}% <= ${existingProgress.toStringAsFixed(2)}%)");
       }
     } catch (e) {
-      debugPrint("Error updating progress: $e");
+      debugPrint("Video progress: Error updating progress: $e");
     }
   }
 
