@@ -346,10 +346,17 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                       adminName = adminData?['name'] ?? 'Unknown';
 
                       // Get actual progress from second document
-                      final progressData = snapshot.data![1].data() as Map<String, dynamic>?;
+                      final progressDoc = snapshot.data![1];
+                      final progressData = progressDoc.data() as Map<String, dynamic>?;
                       actualProgress = (progressData?['progress'] ?? 0.0).toDouble();
 
-                      debugPrint("Video $videoId actual progress: $actualProgress%");
+                      debugPrint("🎥 VIMEO PROGRESS DEBUG:");
+                      debugPrint("   📹 VideoID: $videoId");
+                      debugPrint("   👤 UserID: ${_auth.currentUser?.uid}");
+                      debugPrint("   📄 Progress doc exists: ${progressDoc.exists}");
+                      debugPrint("   📊 Progress data: $progressData");
+                      debugPrint("   🎯 Actual progress: $actualProgress%");
+                      debugPrint("   🔗 Collection path: caregiver_videos/${_auth.currentUser?.uid}/videos/$videoId");
                     }
 
                     return AssignedVideoLayout(
@@ -390,10 +397,17 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                     double actualProgress = 0.0;
 
                     if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                      final progressData = snapshot.data?.data() as Map<String, dynamic>?;
+                      final progressDoc = snapshot.data!;
+                      final progressData = progressDoc.data() as Map<String, dynamic>?;
                       actualProgress = (progressData?['progress'] ?? 0.0).toDouble();
 
-                      debugPrint("YouTube Video $videoId actual progress: $actualProgress%");
+                      debugPrint("📺 YOUTUBE PROGRESS DEBUG:");
+                      debugPrint("   📹 VideoID: $videoId");
+                      debugPrint("   👤 UserID: ${_auth.currentUser?.uid}");
+                      debugPrint("   📄 Progress doc exists: ${progressDoc.exists}");
+                      debugPrint("   📊 Progress data: $progressData");
+                      debugPrint("   🎯 Actual progress: $actualProgress%");
+                      debugPrint("   🔗 Collection path: caregiver_videos/${_auth.currentUser?.uid}/videos/$videoId");
                     }
 
                     return AssignedVideoLayout(
