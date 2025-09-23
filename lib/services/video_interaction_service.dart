@@ -52,7 +52,7 @@ class VideoInteractionService {
               console.log('🚫 Iframe pointer events disabled and z-index lowered');
             }
 
-            // Method 3: Create overlay blocker
+            // Method 3: Create overlay blocker with enhanced settings for large screens
             let blocker = document.getElementById('vimeo-blocker');
             if (!blocker) {
               blocker = document.createElement('div');
@@ -62,19 +62,31 @@ class VideoInteractionService {
               blocker.style.left = '0';
               blocker.style.width = '100%';
               blocker.style.height = '100%';
-              blocker.style.zIndex = '9998';
-              blocker.style.backgroundColor = 'transparent';
               blocker.style.pointerEvents = 'auto';
               document.body.appendChild(blocker);
               console.log('🚫 Created blocker overlay');
             }
 
-            // Method 4: Apply to all iframes as final fallback
+            // Enhanced settings for screens >1400px (where video height is 450px)
+            if (window.innerWidth > 1400) {
+              blocker.style.zIndex = '99998';
+              blocker.style.backgroundColor = 'rgba(0, 0, 0, 0.01)';
+              console.log('🚫 Applied enhanced blocking for large screen (>1400px)');
+            } else {
+              blocker.style.zIndex = '9998';
+              blocker.style.backgroundColor = 'transparent';
+            }
+
+            // Method 4: Apply to all iframes as final fallback with enhanced blocking for large screens
             const allIframes = document.querySelectorAll('iframe');
             allIframes.forEach(frame => {
               frame.classList.add('dialog-active');
               frame.style.pointerEvents = 'none';
-              frame.style.zIndex = '-1';
+              if (window.innerWidth > 1400) {
+                frame.style.zIndex = '-100'; // Even lower z-index for large screens
+              } else {
+                frame.style.zIndex = '-1';
+              }
             });
 
             console.log('🚫 All video interaction disabled');

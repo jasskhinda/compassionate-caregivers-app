@@ -133,6 +133,24 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       display: block;
     }
 
+    /* Enhanced blocking for larger screens >1400px */
+    @media (min-width: 1400px) {
+      .dialog-blocker.active {
+        z-index: 99999;
+        background-color: rgba(0, 0, 0, 0.01);
+      }
+
+      iframe.dialog-active {
+        pointer-events: none !important;
+        z-index: -10 !important;
+      }
+
+      #vimeo-player.dialog-active {
+        pointer-events: none !important;
+        z-index: -10 !important;
+      }
+    }
+
     .flutter-dialog {
       position: fixed;
       top: 0;
@@ -815,14 +833,23 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               // No DOM manipulation needed
             },
           ),
-          // Flutter-level overlay to block webview when dialogs are active
+          // Enhanced Flutter-level overlay to block webview when dialogs are active
+          // Especially important for screens >1400px where video height is 450px
           if (_isDialogActive)
             Positioned.fill(
               child: Container(
-                color: Colors.transparent,
+                color: Colors.black.withOpacity(0.01), // Slight tint to ensure it's rendered
                 child: AbsorbPointer(
                   absorbing: true,
-                  child: Container(),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      // Add a subtle border to help with rendering on larger screens
+                      border: Border.all(color: Colors.transparent, width: 1),
+                    ),
+                  ),
                 ),
               ),
             ),
