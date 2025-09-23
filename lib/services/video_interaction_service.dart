@@ -156,14 +156,14 @@ class VideoInteractionService {
   static bool get hasActiveController => _activeWebViewController != null;
 
   // Show HTML dialog directly in webview
-  static Future<void> showHtmlDialog(String title, String message) async {
+  static Future<void> showHtmlDialog(String title, String message, {String dialogType = 'stillWatching'}) async {
     if (_activeWebViewController != null) {
       try {
         await _activeWebViewController!.evaluateJavascript(
           source: """
             console.log('🎯 Showing HTML dialog from Flutter');
             if (window.showHtmlDialog) {
-              window.showHtmlDialog('$title', '$message');
+              window.showHtmlDialog('$title', '$message', null, '$dialogType');
             } else {
               console.error('showHtmlDialog function not found!');
             }

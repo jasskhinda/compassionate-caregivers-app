@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'video_interaction_service.dart';
 
 class NightShiftMonitoringService {
@@ -104,7 +105,13 @@ class NightShiftMonitoringService {
     _isAlertActive = true;
     _alertStartTime = DateTime.now();
 
-    // Disable video interaction when showing dialog
+    // For web, use HTML dialog directly
+    if (kIsWeb) {
+      await _showHtmlNightShiftDialog();
+      return;
+    }
+
+    // For mobile, use Flutter dialog
     await _disableVideoInteraction();
 
     showDialog(
@@ -487,6 +494,32 @@ class NightShiftMonitoringService {
   DateTime? get nextAlertTime {
     // This is approximate since we don't store the exact time
     return null;
+  }
+
+  // HTML dialog for web platform (Night Shift)
+  Future<void> _showHtmlNightShiftDialog() async {
+    try {
+      await _disableVideoInteraction();
+
+      // Use the webview controller to show HTML dialog
+      if (VideoInteractionService.hasActiveController) {
+        await VideoInteractionService.showHtmlDialog(
+          "Night Shift Check-In",
+          "Please confirm you are alert and actively monitoring your patient.",
+          dialogType: 'nightShift'
+        );
+
+        // Start 5-minute response timer
+        _responseTimer?.cancel();
+        _responseTimer = Timer(Duration(minutes: 5), () {
+          _handleAlertTimeout();
+        });
+
+        debugPrint('🌙 Night Shift HTML dialog shown');
+      }
+    } catch (e) {
+      debugPrint('Error showing Night Shift HTML dialog: $e');
+    }
   }
 
   // JavaScript communication functions to disable/enable video interaction

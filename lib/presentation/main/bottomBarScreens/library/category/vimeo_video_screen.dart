@@ -391,8 +391,8 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     };
 
     // NEW: Direct HTML dialog functions
-    window.showHtmlDialog = function(title, message, callback) {
-      console.log('🚀 Showing HTML dialog directly');
+    window.showHtmlDialog = function(title, message, callback, dialogType = 'stillWatching') {
+      console.log('🚀 Showing HTML dialog directly, type:', dialogType);
 
       const htmlDialog = document.getElementById('html-dialog');
       const titleEl = document.getElementById('dialog-title');
@@ -402,6 +402,18 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
       if (titleEl) titleEl.textContent = title;
       if (messageEl) messageEl.textContent = message;
+
+      // Update button text based on dialog type
+      if (dialogType === 'nightShift') {
+        noBtn.textContent = 'I am Alert';
+        noBtn.className = 'dialog-button primary'; // Make it primary style
+        yesBtn.style.display = 'none'; // Hide Yes button for night shift
+      } else {
+        noBtn.textContent = 'No';
+        noBtn.className = 'dialog-button secondary';
+        yesBtn.textContent = 'Yes';
+        yesBtn.style.display = 'block';
+      }
 
       // Remove existing event listeners
       const newNoBtn = noBtn.cloneNode(true);
@@ -413,11 +425,20 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       function handleNoClick(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('🔴 NO button clicked via HTML (desktop)');
-        htmlDialog.classList.remove('active');
-        window.enableVideoInteraction();
-        if (callback) callback(false);
-        callFlutter('dialogResult', false);
+
+        if (dialogType === 'nightShift') {
+          console.log('🌙 I am Alert button clicked via HTML (desktop)');
+          htmlDialog.classList.remove('active');
+          window.enableVideoInteraction();
+          if (callback) callback(true);
+          callFlutter('dialogResult', true, dialogType);
+        } else {
+          console.log('🔴 NO button clicked via HTML (desktop)');
+          htmlDialog.classList.remove('active');
+          window.enableVideoInteraction();
+          if (callback) callback(false);
+          callFlutter('dialogResult', false, dialogType);
+        }
       }
 
       function handleYesClick(e) {
@@ -427,7 +448,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
         htmlDialog.classList.remove('active');
         window.enableVideoInteraction();
         if (callback) callback(true);
-        callFlutter('dialogResult', true);
+        callFlutter('dialogResult', true, dialogType);
       }
 
       // Add multiple event types for maximum compatibility
@@ -769,13 +790,20 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                 handlerName: 'dialogResult',
                 callback: (args) async {
                   final result = args.isNotEmpty ? args[0] as bool : false;
-                  debugPrint("🎯 HTML Dialog result received: $result");
+                  final dialogType = args.length > 1 ? args[1] as String : 'stillWatching';
+                  debugPrint("🎯 HTML Dialog result received: $result, type: $dialogType");
 
-                  // Handle the dialog result here
-                  if (result) {
-                    debugPrint("User clicked YES - continue watching");
+                  if (dialogType == 'nightShift') {
+                    // Handle night shift dialog - result is always true for "I am Alert"
+                    debugPrint("🌙 Night Shift: User confirmed alert status");
+                    // Night shift service will handle the response via its own logic
                   } else {
-                    debugPrint("User clicked NO - stop watching");
+                    // Handle still watching dialog
+                    if (result) {
+                      debugPrint("📺 Still Watching: User clicked YES - continue watching");
+                    } else {
+                      debugPrint("📺 Still Watching: User clicked NO - stop watching");
+                    }
                   }
                 },
               );
