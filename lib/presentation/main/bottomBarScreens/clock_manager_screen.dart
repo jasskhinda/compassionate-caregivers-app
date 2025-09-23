@@ -5,6 +5,7 @@ import 'package:caregiver/services/clock_management_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import 'home_screen.dart';
 
 class ClockManagerScreen extends StatefulWidget {
   const ClockManagerScreen({super.key});
@@ -22,6 +23,9 @@ class _ClockManagerScreenState extends State<ClockManagerScreen>
   StreamSubscription<DocumentSnapshot>? _userDataSubscription;
   DateTime? _lastRefreshTime;
 
+  // Listener for external refresh notifications
+  void Function()? _refreshListener;
+
   @override
   bool get wantKeepAlive => false; // Don't keep alive to force reload on tab change
 
@@ -31,12 +35,16 @@ class _ClockManagerScreenState extends State<ClockManagerScreen>
     WidgetsBinding.instance.addObserver(this);
     _setupRealTimeListener();
     _loadRecentActivity();
+    _setupRefreshListener();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _userDataSubscription?.cancel();
+    if (_refreshListener != null) {
+      ClockManagerRefreshNotifier.instance.removeListener(_refreshListener!);
+    }
     super.dispose();
   }
 
@@ -81,6 +89,15 @@ class _ClockManagerScreenState extends State<ClockManagerScreen>
     });
   }
 
+  void _setupRefreshListener() {
+    _refreshListener = () {
+      if (mounted) {
+        debugPrint('🔄 Clock manager received refresh notification from dashboard');
+        _loadRecentActivity();
+      }
+    };
+    ClockManagerRefreshNotifier.instance.addListener(_refreshListener!);
+  }
 
   Future<void> _loadRecentActivity() async {
     try {

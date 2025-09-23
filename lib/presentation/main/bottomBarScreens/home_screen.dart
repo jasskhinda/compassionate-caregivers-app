@@ -5,18 +5,31 @@ import 'dart:async';
 import 'package:caregiver/component/appBar/home_app_bar.dart';
 import 'package:caregiver/component/home/initial_option_layout.dart';
 import 'package:caregiver/component/listLayout/assigned_video_layout.dart';
-import 'package:caregiver/component/other/basic_button.dart';
 import 'package:caregiver/component/other/not_found_dialog.dart';
 import 'package:caregiver/presentation/main/manageUser/caregiver_list.dart';
 import 'package:caregiver/services/user_video_services.dart';
 import 'package:caregiver/services/firebase_service.dart';
 import 'package:caregiver/services/user_services.dart';
 import 'package:caregiver/services/night_shift_monitoring_service.dart';
+import 'package:caregiver/services/clock_management_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:intl/intl.dart';
 
 import '../../../component/home/user_count_layout.dart';
 import '../../../utils/appRoutes/app_routes.dart';
+
+// Global notifier for clock manager refresh
+class ClockManagerRefreshNotifier extends ChangeNotifier {
+  static final ClockManagerRefreshNotifier _instance = ClockManagerRefreshNotifier._internal();
+  factory ClockManagerRefreshNotifier() => _instance;
+  ClockManagerRefreshNotifier._internal();
+
+  static ClockManagerRefreshNotifier get instance => _instance;
+
+  void notifyRefresh() {
+    notifyListeners();
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Night shift monitoring service
   final NightShiftMonitoringService _nightShiftService = NightShiftMonitoringService();
+
+  // Clock management service
+  final ClockManagementService _clockService = ClockManagementService();
 
   // User count
   int? _staff;
@@ -86,117 +102,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Get user video details
-  Future<void> _getUserInfo() async {
-    try {
-      if (!FirebaseService.isUserAuthenticated()) {
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final document = await FirebaseService.retryOperation(
-        () => FirebaseService.getUserDocument(_auth.currentUser!.uid),
-      );
-
-      if (document != null && document.exists) {
-        final rawData = document.data();
-        if (rawData != null) {
-          var data = rawData as Map<String, dynamic>;
-          setState(() {
-            _role = data['role'] ?? 'Caregiver';
-            _username = data['name'] ?? 'User';
-            _assignedVideo = data['assigned_video'] ?? 0;
-            _completedVideo = data['completed_video'] ?? 0;
-            _isClockedIn = data['is_clocked_in'] ?? false;
-            _shiftType = data['shift_type'];
-            _isLoading = false;
-          });
-          debugPrint('User info loaded: role=$_role, username=$_username');
-        } else {
-          setState(() {
-            _role = 'Caregiver';
-            _username = 'User';
-            _assignedVideo = 0;
-            _completedVideo = 0;
-            _isLoading = false;
-          });
-          debugPrint("User document data is null, using default values");
-        }
-      } else {
-        setState(() {
-          _role = 'Caregiver';
-          _username = 'User';
-          _assignedVideo = 0;
-          _completedVideo = 0;
-          _isLoading = false;
-        });
-        debugPrint("User document not found, using default values");
-      }
-    } catch (e) {
-      if(!mounted) return;
-      setState(() {
-        _role = 'Caregiver';
-        _username = 'User';
-        _assignedVideo = 0;
-        _completedVideo = 0;
-        _isLoading = false;
-      });
-      debugPrint("Error fetching user info: $e");
-    }
-  }
 
   // Clock in/out functionality
   Future<void> _clockIn() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return;
+      final success = await _clockService.clockIn(_username ?? 'User');
+      if (success) {
+        // Notify clock manager to refresh recent activity
+        _notifyClockManagerRefresh();
 
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .set({
-            'is_clocked_in': true,
-            'last_clock_in_time': FieldValue.serverTimestamp(),
-            'manual_clock_in': true,
-          }, SetOptions(merge: true));
-
-      // Create attendance record
-      await FirebaseFirestore.instance
-          .collection('attendance')
-          .add({
-            'user_id': user.uid,
-            'user_name': _username,
-            'clock_in_time': FieldValue.serverTimestamp(),
-            'type': 'manual_clock_in',
-            'date': DateTime.now().toIso8601String().split('T')[0],
-          });
-
-      // Create admin notification
-      await FirebaseFirestore.instance
-          .collection('admin_alerts')
-          .add({
-            'type': 'night_shift_clock_in',
-            'caregiver_id': user.uid,
-            'caregiver_name': _username,
-            'message': '$_username manually clocked in from dashboard',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'status': 'clocked_in',
-            'clock_in_time': FieldValue.serverTimestamp(),
-            'clock_in_type': 'manual',
-            'source': 'dashboard',
-          });
-
-      // Real-time listener will automatically update _isClockedIn
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully clocked in!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully clocked in!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to clock in. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -209,65 +137,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _clockOut() async {
     try {
-      final user = _auth.currentUser;
-      if (user == null) return;
+      final success = await _clockService.clockOut(_username ?? 'User');
+      if (success) {
+        // Notify clock manager to refresh recent activity
+        _notifyClockManagerRefresh();
 
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .set({
-            'is_clocked_in': false,
-            'last_clock_out_time': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-
-      // Update attendance record - simplified query to avoid index requirement
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      final attendanceQuery = await FirebaseFirestore.instance
-          .collection('attendance')
-          .where('user_id', isEqualTo: user.uid)
-          .get();
-
-      // Filter for today's record and find the one without clock_out_time
-      for (var doc in attendanceQuery.docs) {
-        final data = doc.data();
-        if (data['date'] == today && data['clock_out_time'] == null) {
-          await doc.reference.update({
-            'clock_out_time': FieldValue.serverTimestamp(),
-            'clock_out_type': 'manual',
-          });
-          break;
+        // Stop night shift monitoring
+        if (_shiftType == 'Night') {
+          _nightShiftService.stopMonitoring();
         }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully clocked out!'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to clock out. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-
-      // Create admin notification
-      await FirebaseFirestore.instance
-          .collection('admin_alerts')
-          .add({
-            'type': 'night_shift_clock_out',
-            'caregiver_id': user.uid,
-            'caregiver_name': _username,
-            'message': '$_username manually clocked out from dashboard',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'status': 'clocked_out',
-            'clock_out_time': FieldValue.serverTimestamp(),
-            'clock_out_type': 'manual',
-            'source': 'dashboard',
-          });
-
-      // Real-time listener will automatically update _isClockedIn
-
-      // Stop night shift monitoring
-      if (_shiftType == 'Night') {
-        _nightShiftService.stopMonitoring();
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully clocked out!'),
-          backgroundColor: Colors.blue,
-        ),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -276,6 +169,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+  }
+
+  // Notify clock manager to refresh recent activity
+  void _notifyClockManagerRefresh() {
+    // Post a message to trigger refresh in clock manager
+    // This will be picked up by any listening clock manager screens
+    Future.delayed(Duration(milliseconds: 100), () {
+      // Broadcast to all screens that might be interested
+      // Using a simple approach with a global event
+      ClockManagerRefreshNotifier.instance.notifyRefresh();
+    });
   }
 
   @override
