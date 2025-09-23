@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/services/super_admin_service.dart';
 import 'package:caregiver/services/user_validation_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'chat_screen.dart';
@@ -131,10 +132,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                       String userName = displayInfo['name']!;
                       String userEmail = displayInfo['email']!;
                       String userRole = displayInfo['role']!;
+                      final isSuperAdmin = userEmail.toLowerCase() == SuperAdminService.SUPER_ADMIN_EMAIL.toLowerCase();
+                      final subtitleText = isSuperAdmin
+                          ? 'Super Admin - Contact for Technical Support • $userEmail'
+                          : '$userRole • $userEmail';
 
                       return CheckboxListTile(
                         title: Text(userName),
-                        subtitle: Text('$userRole • $userEmail'),
+                        subtitle: Text(subtitleText),
                         value: _selectedUsers.contains(userId),
                         onChanged: (bool? value) {
                           setState(() {

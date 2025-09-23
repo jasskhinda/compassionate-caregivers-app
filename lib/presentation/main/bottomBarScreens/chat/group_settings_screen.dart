@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/services/super_admin_service.dart';
 import 'package:caregiver/services/user_validation_service.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
@@ -99,9 +100,14 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                           return UserValidationService.isValidUserDocument(doc);
                         }).map((doc) {
                           final displayInfo = UserValidationService.getUserDisplayInfoFromDoc(doc);
+                          final isSuperAdmin = displayInfo['email']?.toLowerCase() == SuperAdminService.SUPER_ADMIN_EMAIL.toLowerCase();
+                          final subtitleText = isSuperAdmin
+                              ? '${displayInfo['email']!}\nSuper Admin - Contact for Technical Support'
+                              : '${displayInfo['email']!}\n${displayInfo['role']!}';
+
                           return ListTile(
                             title: Text(displayInfo['name']!),
-                            subtitle: Text('${displayInfo['email']!}\n${displayInfo['role']!}'),
+                            subtitle: Text(subtitleText),
                             trailing: _userRole == 'Admin' && displayInfo['role'] != 'Admin'
                                 ? IconButton(
                                     icon: Icon(Icons.remove_circle_outline),
@@ -159,10 +165,14 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
                     children: validUsers.map((doc) {
                       final displayInfo = UserValidationService.getUserDisplayInfoFromDoc(doc);
                       final bool isSelected = selectedUsers.contains(doc.id);
+                      final isSuperAdmin = displayInfo['email']?.toLowerCase() == SuperAdminService.SUPER_ADMIN_EMAIL.toLowerCase();
+                      final subtitleText = isSuperAdmin
+                          ? '${displayInfo['email']!}\nSuper Admin - Contact for Technical Support'
+                          : '${displayInfo['email']!}\n${displayInfo['role']!}';
 
                       return CheckboxListTile(
                         title: Text(displayInfo['name']!),
-                        subtitle: Text('${displayInfo['email']!}\n${displayInfo['role']!}'),
+                        subtitle: Text(subtitleText),
                         value: isSelected,
                         onChanged: (bool? value) {
                           setState(() {

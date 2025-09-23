@@ -6,6 +6,7 @@ import 'package:caregiver/component/appBar/main_app_bar.dart';
 import 'package:caregiver/component/other/input_text_fields/input_text_field.dart';
 import 'package:caregiver/presentation/main/bottomBarScreens/chat/chat_layout.dart';
 import 'package:caregiver/services/chat_services.dart';
+import 'package:caregiver/services/super_admin_service.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 
@@ -151,28 +152,41 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
     if (userName.isEmpty || userName.toLowerCase() == "unknown user") {
       userName = userData["email"]?.toString().split('@')[0] ?? "User";
     }
-    
-    return ChatLayout(
-      hasBadge: false,
-      badgeCount: 0,
-      backgroundColor: AppUtils.getColorScheme(context).secondary,
-      title: userName,
-      profileImageUrl: userData["profile_image_url"],
-      lastMessage: "Tap to start chatting",
-      lastMessageTime: null,
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.chatScreen,
-          arguments: {
-            'userName': userName,
-            'userEmail': userData["email"] ?? "",
-            'userID': userData["uid"] ?? "",
-            'isGroupChat': false,
+
+    return FutureBuilder<bool>(
+      future: _isUserSuperAdmin(userData["email"]),
+      builder: (context, snapshot) {
+        final isSuperAdmin = snapshot.data ?? false;
+
+        return ChatLayout(
+          hasBadge: false,
+          badgeCount: 0,
+          backgroundColor: AppUtils.getColorScheme(context).secondary,
+          title: userName,
+          subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
+          profileImageUrl: userData["profile_image_url"],
+          lastMessage: "Tap to start chatting",
+          lastMessageTime: null,
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.chatScreen,
+              arguments: {
+                'userName': userName,
+                'userEmail': userData["email"] ?? "",
+                'userID': userData["uid"] ?? "",
+                'isGroupChat': false,
+              }
+            );
           }
         );
-      }
+      },
     );
+  }
+
+  Future<bool> _isUserSuperAdmin(String? userEmail) async {
+    if (userEmail == null) return false;
+    return userEmail.toLowerCase() == SuperAdminService.SUPER_ADMIN_EMAIL.toLowerCase();
   }
 
   Widget _buildGroupList() {
