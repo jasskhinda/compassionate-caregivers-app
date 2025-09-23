@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:caregiver/component/other/show_still_watching_dialog.dart';
 import '../../../../../services/user_video_services.dart';
+import '../../../../../services/video_interaction_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../../utils/app_utils/AppUtils.dart';
 
@@ -75,6 +76,11 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       height: 100%;
       border: none;
       z-index: 1;
+      transition: pointer-events 0.1s ease;
+    }
+
+    iframe.dialog-active {
+      pointer-events: none !important;
     }
 
     .block-top {
@@ -160,6 +166,23 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       console.log('Vimeo paused');
       callFlutter('videoPause');
     });
+
+    // Functions to disable/enable iframe interaction
+    window.disableVideoInteraction = function() {
+      console.log('Disabling video interaction for dialog');
+      const iframe = document.getElementById('vimeo-player');
+      if (iframe) {
+        iframe.classList.add('dialog-active');
+      }
+    };
+
+    window.enableVideoInteraction = function() {
+      console.log('Enabling video interaction after dialog');
+      const iframe = document.getElementById('vimeo-player');
+      if (iframe) {
+        iframe.classList.remove('dialog-active');
+      }
+    };
   </script>
 </body>
 </html>
@@ -310,6 +333,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   void dispose() {
     _progressTimer?.cancel();
     _updateTimer?.cancel();
+    VideoInteractionService.unregisterWebViewController(); // Unregister from service
     super.dispose();
   }
 
@@ -370,6 +394,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
             ),
             onWebViewCreated: (controller) async {
               _webViewController = controller;
+              VideoInteractionService.registerWebViewController(controller); // Register with service
               final htmlData = _generateHtmlData(videoUrl!);
 
               await controller.loadData(
@@ -427,8 +452,14 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                     await controller.evaluateJavascript(source: "player.pause();");
                     setState(() => isPlaying = false);
 
+                    // Disable video interaction before showing dialog
+                    await VideoInteractionService.disableVideoInteraction();
+
                     // Show the dialog
                     final result = await showStillWatchingDialog(context);
+
+                    // Re-enable video interaction after dialog
+                    await VideoInteractionService.enableVideoInteraction();
 
                     if (result == true) {
                       await controller.evaluateJavascript(source: "player.play();");
@@ -441,6 +472,21 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                     // Video already paused — skip dialog
                     _stillWatchingTimer = null;
                   }
+                },
+              );
+
+              // Add JavaScript handlers for external dialog control
+              controller.addJavaScriptHandler(
+                handlerName: 'disableVideoInteraction',
+                callback: (args) async {
+                  await controller.evaluateJavascript(source: "window.disableVideoInteraction && window.disableVideoInteraction();");
+                },
+              );
+
+              controller.addJavaScriptHandler(
+                handlerName: 'enableVideoInteraction',
+                callback: (args) async {
+                  await controller.evaluateJavascript(source: "window.enableVideoInteraction && window.enableVideoInteraction();");
                 },
               );
             },

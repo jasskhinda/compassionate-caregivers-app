@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'video_interaction_service.dart';
 
 class NightShiftMonitoringService {
   static final NightShiftMonitoringService _instance = NightShiftMonitoringService._internal();
@@ -102,6 +104,9 @@ class NightShiftMonitoringService {
 
     _isAlertActive = true;
     _alertStartTime = DateTime.now();
+
+    // Disable video interaction when showing dialog
+    _disableVideoInteraction();
 
     showDialog(
       context: _context!,
@@ -250,6 +255,9 @@ class NightShiftMonitoringService {
 
     Navigator.pop(dialogContext);
 
+    // Re-enable video interaction after dialog closes
+    _enableVideoInteraction();
+
     // Show success message
     if (_context != null && _context!.mounted) {
       ScaffoldMessenger.of(_context!).showSnackBar(
@@ -312,7 +320,11 @@ class NightShiftMonitoringService {
     if (_context != null && _context!.mounted) {
       Navigator.of(_context!).pop();
 
+      // Re-enable video interaction
+      _enableVideoInteraction();
+
       // Show warning message
+      _disableVideoInteraction(); // Disable for warning dialog too
       showDialog(
         context: _context!,
         barrierDismissible: false,
@@ -353,7 +365,10 @@ class NightShiftMonitoringService {
                     ),
                     actions: [
                       ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _enableVideoInteraction(); // Re-enable when warning dialog closes
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
@@ -445,5 +460,26 @@ class NightShiftMonitoringService {
   DateTime? get nextAlertTime {
     // This is approximate since we don't store the exact time
     return null;
+  }
+
+  // JavaScript communication functions to disable/enable video interaction
+  void _disableVideoInteraction() {
+    debugPrint('NightShift: Attempting to disable video interaction');
+    try {
+      // Use the VideoInteractionService to disable interaction
+      VideoInteractionService.disableVideoInteraction();
+    } catch (e) {
+      debugPrint('NightShift: Error disabling video interaction: $e');
+    }
+  }
+
+  void _enableVideoInteraction() {
+    debugPrint('NightShift: Attempting to enable video interaction');
+    try {
+      // Use the VideoInteractionService to enable interaction
+      VideoInteractionService.enableVideoInteraction();
+    } catch (e) {
+      debugPrint('NightShift: Error enabling video interaction: $e');
+    }
   }
 }
