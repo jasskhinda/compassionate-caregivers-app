@@ -15,7 +15,7 @@ class ClockManagementService {
   // Track if auto clock-in has been performed for this session
   bool _hasAutoClockInRunForSession = false;
 
-  // Auto clock-in when user logs in
+  // Auto clock-in when user logs in (currently disabled - will be triggered via Wellsky API)
   Future<void> autoClockInOnLogin() async {
     try {
       final user = _auth.currentUser;
@@ -276,6 +276,101 @@ class ClockManagementService {
     } catch (e) {
       debugPrint('❌ Error getting clock status: $e');
       return null;
+    }
+  }
+
+  // For future Wellsky API integration - trigger clock-in from external source
+  Future<bool> triggerClockInFromWellsky(String userName, String userId) async {
+    try {
+      // Update user status
+      await _firestore.collection('Users').doc(userId).set({
+        'is_clocked_in': true,
+        'last_clock_in_time': FieldValue.serverTimestamp(),
+        'clock_in_source': 'wellsky_api',
+      }, SetOptions(merge: true));
+
+      // Create attendance record
+      await _firestore.collection('attendance').add({
+        'user_id': userId,
+        'user_name': userName,
+        'clock_in_time': FieldValue.serverTimestamp(),
+        'type': 'wellsky_api',
+        'date': DateTime.now().toIso8601String().split('T')[0],
+      });
+
+      // Create admin notification
+      await _firestore.collection('admin_alerts').add({
+        'type': 'night_shift_clock_in',
+        'caregiver_id': userId,
+        'caregiver_name': userName,
+        'message': '$userName clocked in via Wellsky',
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'status': 'clocked_in',
+        'clock_in_time': FieldValue.serverTimestamp(),
+        'clock_in_type': 'wellsky_api',
+        'source': 'wellsky_dashboard',
+      });
+
+      debugPrint('✅ Wellsky API clock-in completed for $userName');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Wellsky API clock-in error: $e');
+      return false;
+    }
+  }
+
+  // For future Wellsky API integration - trigger clock-out from external source
+  Future<bool> triggerClockOutFromWellsky(String userName, String userId) async {
+    try {
+      // Update user status
+      await _firestore.collection('Users').doc(userId).set({
+        'is_clocked_in': false,
+        'last_clock_out_time': FieldValue.serverTimestamp(),
+        'clock_out_source': 'wellsky_api',
+      }, SetOptions(merge: true));
+
+      // Update attendance record
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final attendanceQuery = await _firestore
+          .collection('attendance')
+          .where('user_id', isEqualTo: userId)
+          .get();
+
+      // Filter for today's record and find the one without clock_out_time
+      for (var doc in attendanceQuery.docs) {
+        final data = doc.data();
+        if (data['date'] == today && data['clock_out_time'] == null) {
+          await doc.reference.update({
+            'clock_out_time': FieldValue.serverTimestamp(),
+            'clock_out_type': 'wellsky_api',
+          });
+          break;
+        }
+      }
+
+      // Create admin notification
+      await _firestore.collection('admin_alerts').add({
+        'type': 'night_shift_clock_out',
+        'caregiver_id': userId,
+        'caregiver_name': userName,
+        'message': '$userName clocked out via Wellsky',
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'status': 'clocked_out',
+        'clock_out_time': FieldValue.serverTimestamp(),
+        'clock_out_type': 'wellsky_api',
+        'source': 'wellsky_dashboard',
+      });
+
+      // Stop night shift monitoring
+      _nightShiftService.stopMonitoring();
+
+      debugPrint('✅ Wellsky API clock-out completed for $userName');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Wellsky API clock-out error: $e');
+      return false;
     }
   }
 }

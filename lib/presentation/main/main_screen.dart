@@ -91,10 +91,9 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _checkUserRole();
-    // Auto clock-in for caregivers on login
+    // Note: Auto clock-in removed - will be handled via Wellsky API integration
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _clockService.autoClockInOnLogin();
-      // Start night shift monitoring if applicable
+      // Start night shift monitoring if applicable (only if user is already clocked in)
       _nightShiftService.startMonitoring(context);
     });
   }
