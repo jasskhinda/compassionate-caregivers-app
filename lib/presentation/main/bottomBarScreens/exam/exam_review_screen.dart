@@ -7,7 +7,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:universal_html/html.dart' as html;
+
+// Conditional import for web support
+import 'exam_review_screen_stub.dart'
+    if (dart.library.html) 'exam_review_screen_web.dart' as web_helper;
 
 class ExamReviewScreen extends StatefulWidget {
   final String examId;
@@ -160,12 +163,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
     final fileName = 'ExamReport_${widget.examId}.pdf';
 
     if (kIsWeb) {
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', fileName)
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      web_helper.downloadWebPdf(bytes, fileName);
       return;
     }
 
