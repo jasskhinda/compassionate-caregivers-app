@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../services/video_interaction_service.dart';
 
 Future<bool?> showStillWatchingDialog(BuildContext context) async {
-  // Disable video interaction when showing dialog
+  // For web, use HTML dialog directly in the iframe
+  if (kIsWeb) {
+    return await _showHtmlDialog();
+  }
+
+  // For mobile, use Flutter dialog
   await _disableVideoInteraction();
 
   final result = await showDialog<bool>(
@@ -133,6 +139,27 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
   _enableVideoInteraction();
 
   return result;
+}
+
+// HTML dialog for web platform
+Future<bool?> _showHtmlDialog() async {
+  try {
+    await VideoInteractionService.disableVideoInteraction();
+
+    // Use the webview controller to show HTML dialog
+    if (VideoInteractionService.hasActiveController) {
+      await VideoInteractionService.showHtmlDialog(
+        "Are you still watching?",
+        "We noticed inactivity. Are you still watching this video?"
+      );
+
+      // Return immediately - the result will be handled by JavaScript
+      return true; // Temporary - this will be handled by JS callback
+    }
+  } catch (e) {
+    debugPrint('Error showing HTML dialog: $e');
+  }
+  return null;
 }
 
 // JavaScript communication functions to disable/enable video interaction

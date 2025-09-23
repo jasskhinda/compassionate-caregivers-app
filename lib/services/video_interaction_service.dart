@@ -154,4 +154,27 @@ class VideoInteractionService {
 
   // Check if a WebView controller is active
   static bool get hasActiveController => _activeWebViewController != null;
+
+  // Show HTML dialog directly in webview
+  static Future<void> showHtmlDialog(String title, String message) async {
+    if (_activeWebViewController != null) {
+      try {
+        await _activeWebViewController!.evaluateJavascript(
+          source: """
+            console.log('🎯 Showing HTML dialog from Flutter');
+            if (window.showHtmlDialog) {
+              window.showHtmlDialog('$title', '$message');
+            } else {
+              console.error('showHtmlDialog function not found!');
+            }
+          """
+        );
+        debugPrint('🎯 VideoInteractionService: HTML dialog triggered');
+      } catch (e) {
+        debugPrint('🎯 VideoInteractionService: Error showing HTML dialog: $e');
+      }
+    } else {
+      debugPrint('🎯 VideoInteractionService: No active WebView controller for HTML dialog');
+    }
+  }
 }

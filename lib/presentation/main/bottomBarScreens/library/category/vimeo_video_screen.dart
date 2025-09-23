@@ -132,6 +132,85 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     .dialog-blocker.active {
       display: block;
     }
+
+    .flutter-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .flutter-dialog.active {
+      display: flex;
+    }
+
+    .dialog-content {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    .dialog-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    .dialog-message {
+      font-size: 16px;
+      margin-bottom: 24px;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .dialog-buttons {
+      display: flex;
+      gap: 16px;
+    }
+
+    .dialog-button {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dialog-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .dialog-button.secondary {
+      background-color: #f5f5f5;
+      color: #333;
+      border: 2px solid #ddd;
+    }
+
+    .dialog-button.primary {
+      background-color: #007bff;
+      color: white;
+      border: 2px solid #007bff;
+    }
+
+    .dialog-button.primary:hover {
+      background-color: #0056b3;
+    }
   </style>
 </head>
 <body>
@@ -144,6 +223,18 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     <div class="click-overlay" onclick="simulateTap()"></div>
   </div>
   <div id="dialog-blocker" class="dialog-blocker"></div>
+
+  <!-- HTML Dialog for direct interaction -->
+  <div id="html-dialog" class="flutter-dialog">
+    <div class="dialog-content">
+      <div id="dialog-title" class="dialog-title">Are you still watching?</div>
+      <div id="dialog-message" class="dialog-message">We noticed inactivity. Are you still watching this video?</div>
+      <div class="dialog-buttons">
+        <button id="dialog-no" class="dialog-button secondary">No</button>
+        <button id="dialog-yes" class="dialog-button primary">Yes</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const iframe = document.getElementById('vimeo-player');
@@ -216,6 +307,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       console.log('✅ Enabling video interaction after dialog');
       const iframe = document.getElementById('vimeo-player');
       const blocker = document.getElementById('dialog-blocker');
+      const htmlDialog = document.getElementById('html-dialog');
 
       if (iframe) {
         iframe.classList.remove('dialog-active');
@@ -226,6 +318,60 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       if (blocker) {
         blocker.classList.remove('active');
         console.log('✅ Dialog blocker deactivated');
+      }
+
+      if (htmlDialog) {
+        htmlDialog.classList.remove('active');
+        console.log('✅ HTML dialog hidden');
+      }
+    };
+
+    // NEW: Direct HTML dialog functions
+    window.showHtmlDialog = function(title, message, callback) {
+      console.log('🚀 Showing HTML dialog directly');
+
+      const htmlDialog = document.getElementById('html-dialog');
+      const titleEl = document.getElementById('dialog-title');
+      const messageEl = document.getElementById('dialog-message');
+      const noBtn = document.getElementById('dialog-no');
+      const yesBtn = document.getElementById('dialog-yes');
+
+      if (titleEl) titleEl.textContent = title;
+      if (messageEl) messageEl.textContent = message;
+
+      // Remove existing event listeners
+      const newNoBtn = noBtn.cloneNode(true);
+      const newYesBtn = yesBtn.cloneNode(true);
+      noBtn.parentNode.replaceChild(newNoBtn, noBtn);
+      yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+
+      // Add new event listeners
+      newNoBtn.addEventListener('click', function() {
+        console.log('🔴 NO button clicked via HTML');
+        htmlDialog.classList.remove('active');
+        window.enableVideoInteraction();
+        if (callback) callback(false);
+        callFlutter('dialogResult', false);
+      });
+
+      newYesBtn.addEventListener('click', function() {
+        console.log('🟢 YES button clicked via HTML');
+        htmlDialog.classList.remove('active');
+        window.enableVideoInteraction();
+        if (callback) callback(true);
+        callFlutter('dialogResult', true);
+      });
+
+      // Show dialog
+      htmlDialog.classList.add('active');
+      window.disableVideoInteraction();
+    };
+
+    window.hideHtmlDialog = function() {
+      const htmlDialog = document.getElementById('html-dialog');
+      if (htmlDialog) {
+        htmlDialog.classList.remove('active');
+        window.enableVideoInteraction();
       }
     };
   </script>
@@ -541,6 +687,22 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                 handlerName: 'enableVideoInteraction',
                 callback: (args) async {
                   await controller.evaluateJavascript(source: "window.enableVideoInteraction && window.enableVideoInteraction();");
+                },
+              );
+
+              // Handler for HTML dialog results
+              controller.addJavaScriptHandler(
+                handlerName: 'dialogResult',
+                callback: (args) async {
+                  final result = args.isNotEmpty ? args[0] as bool : false;
+                  debugPrint("🎯 HTML Dialog result received: $result");
+
+                  // Handle the dialog result here
+                  if (result) {
+                    debugPrint("User clicked YES - continue watching");
+                  } else {
+                    debugPrint("User clicked NO - stop watching");
+                  }
                 },
               );
             },
