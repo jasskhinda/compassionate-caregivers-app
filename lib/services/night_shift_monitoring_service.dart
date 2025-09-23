@@ -99,14 +99,14 @@ class NightShiftMonitoringService {
     });
   }
 
-  void _showAlertDialog() {
+  void _showAlertDialog() async {
     if (_context == null || !(_context!.mounted)) return;
 
     _isAlertActive = true;
     _alertStartTime = DateTime.now();
 
     // Disable video interaction when showing dialog
-    _disableVideoInteraction();
+    await _disableVideoInteraction();
 
     showDialog(
       context: _context!,
@@ -115,22 +115,33 @@ class NightShiftMonitoringService {
       builder: (BuildContext dialogContext) {
         return WillPopScope(
           onWillPop: () async => false, // Prevent back button
-          child: Material(
-            type: MaterialType.transparency,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7), // Stronger overlay
-              ),
-              child: Center(
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(_context!).size.width * 0.9,
-                    maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+          child: Stack(
+            children: [
+              // Full screen barrier with high z-index
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () {}, // Capture all taps
+                  child: Container(
+                    color: Colors.black.withOpacity(0.8),
                   ),
-                  child: AlertDialog(
-                    elevation: 24, // Higher elevation to ensure it's on top
+                ),
+              ),
+              // Dialog with explicit z-index positioning
+              Positioned.fill(
+                child: Center(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(_context!).size.width * 0.9,
+                        maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+                      ),
+                      child: AlertDialog(
+                        elevation: 1000, // Very high elevation
+                        backgroundColor: Theme.of(dialogContext).dialogBackgroundColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        )
             title: Row(
               children: [
                 Icon(Icons.nightlight_round, color: Colors.blue, size: 28),
@@ -194,10 +205,12 @@ class NightShiftMonitoringService {
                 ),
               ),
             ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         );
       },
@@ -211,6 +224,9 @@ class NightShiftMonitoringService {
   }
 
   void _handleAlertResponse(bool responded, BuildContext dialogContext) async {
+    // Re-enable video interaction before closing dialog
+    await _enableVideoInteraction();
+
     _responseTimer?.cancel();
     _isAlertActive = false;
 
@@ -255,9 +271,6 @@ class NightShiftMonitoringService {
 
     Navigator.pop(dialogContext);
 
-    // Re-enable video interaction after dialog closes
-    _enableVideoInteraction();
-
     // Show success message
     if (_context != null && _context!.mounted) {
       ScaffoldMessenger.of(_context!).showSnackBar(
@@ -280,7 +293,7 @@ class NightShiftMonitoringService {
     _scheduleNextAlert();
   }
 
-  void _handleAlertTimeout() async {
+  Future<void> _handleAlertTimeout() async {
     _isAlertActive = false;
 
     final user = _auth.currentUser;
@@ -321,32 +334,44 @@ class NightShiftMonitoringService {
       Navigator.of(_context!).pop();
 
       // Re-enable video interaction
-      _enableVideoInteraction();
+      await _enableVideoInteraction();
 
       // Show warning message
-      _disableVideoInteraction(); // Disable for warning dialog too
+      await _disableVideoInteraction(); // Disable for warning dialog too
       showDialog(
         context: _context!,
         barrierDismissible: false,
         useRootNavigator: true, // Show above all content including video players
         builder: (BuildContext context) {
-          return Material(
-            type: MaterialType.transparency,
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.8), // Even stronger overlay for warning
-              ),
-              child: Center(
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(_context!).size.width * 0.9,
-                    maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+          return WillPopScope(
+            onWillPop: () async => false,
+            child: Stack(
+              children: [
+                // Full screen barrier with high z-index
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () {}, // Capture all taps
+                    child: Container(
+                      color: Colors.black.withOpacity(0.8),
+                    ),
                   ),
-                  child: AlertDialog(
-                    elevation: 30, // Higher elevation for critical warning
-                    backgroundColor: Colors.red.shade50,
+                ),
+                // Dialog with explicit z-index positioning
+                Positioned.fill(
+                  child: Center(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(_context!).size.width * 0.9,
+                          maxHeight: MediaQuery.of(_context!).size.height * 0.8,
+                        ),
+                        child: AlertDialog(
+                          elevation: 1000, // Very high elevation
+                          backgroundColor: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                     title: Row(
                       children: [
                         Icon(Icons.warning, color: Colors.red, size: 28),
@@ -365,9 +390,9 @@ class NightShiftMonitoringService {
                     ),
                     actions: [
                       ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          await _enableVideoInteraction(); // Re-enable when warning dialog closes
                           Navigator.pop(context);
-                          _enableVideoInteraction(); // Re-enable when warning dialog closes
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
@@ -377,9 +402,12 @@ class NightShiftMonitoringService {
                         child: Text('OK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -463,21 +491,21 @@ class NightShiftMonitoringService {
   }
 
   // JavaScript communication functions to disable/enable video interaction
-  void _disableVideoInteraction() {
+  Future<void> _disableVideoInteraction() async {
     debugPrint('NightShift: Attempting to disable video interaction');
     try {
       // Use the VideoInteractionService to disable interaction
-      VideoInteractionService.disableVideoInteraction();
+      await VideoInteractionService.disableVideoInteraction();
     } catch (e) {
       debugPrint('NightShift: Error disabling video interaction: $e');
     }
   }
 
-  void _enableVideoInteraction() {
+  Future<void> _enableVideoInteraction() async {
     debugPrint('NightShift: Attempting to enable video interaction');
     try {
       // Use the VideoInteractionService to enable interaction
-      VideoInteractionService.enableVideoInteraction();
+      await VideoInteractionService.enableVideoInteraction();
     } catch (e) {
       debugPrint('NightShift: Error enabling video interaction: $e');
     }

@@ -40,14 +40,33 @@ class VideoInteractionService {
             if (iframe) {
               iframe.classList.add('dialog-active');
               iframe.style.pointerEvents = 'none';
-              console.log('🚫 Iframe pointer events disabled');
+              iframe.style.zIndex = '-1';
+              console.log('🚫 Iframe pointer events disabled and z-index lowered');
             }
 
-            // Method 3: Apply to all iframes as final fallback
+            // Method 3: Create overlay blocker
+            let blocker = document.getElementById('vimeo-blocker');
+            if (!blocker) {
+              blocker = document.createElement('div');
+              blocker.id = 'vimeo-blocker';
+              blocker.style.position = 'fixed';
+              blocker.style.top = '0';
+              blocker.style.left = '0';
+              blocker.style.width = '100%';
+              blocker.style.height = '100%';
+              blocker.style.zIndex = '9998';
+              blocker.style.backgroundColor = 'transparent';
+              blocker.style.pointerEvents = 'auto';
+              document.body.appendChild(blocker);
+              console.log('🚫 Created blocker overlay');
+            }
+
+            // Method 4: Apply to all iframes as final fallback
             const allIframes = document.querySelectorAll('iframe');
             allIframes.forEach(frame => {
               frame.classList.add('dialog-active');
               frame.style.pointerEvents = 'none';
+              frame.style.zIndex = '-1';
             });
 
             console.log('🚫 All video interaction disabled');
@@ -81,14 +100,23 @@ class VideoInteractionService {
             if (iframe) {
               iframe.classList.remove('dialog-active');
               iframe.style.pointerEvents = 'auto';
-              console.log('✅ Iframe pointer events enabled');
+              iframe.style.zIndex = '1';
+              console.log('✅ Iframe pointer events enabled and z-index restored');
             }
 
-            // Method 3: Apply to all iframes as final fallback
+            // Method 3: Remove overlay blocker
+            const blocker = document.getElementById('vimeo-blocker');
+            if (blocker) {
+              blocker.remove();
+              console.log('✅ Removed blocker overlay');
+            }
+
+            // Method 4: Apply to all iframes as final fallback
             const allIframes = document.querySelectorAll('iframe');
             allIframes.forEach(frame => {
               frame.classList.remove('dialog-active');
               frame.style.pointerEvents = 'auto';
+              frame.style.zIndex = '1';
             });
 
             console.log('✅ All video interaction enabled');
