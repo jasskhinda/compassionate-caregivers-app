@@ -189,11 +189,42 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       font-weight: bold;
       cursor: pointer;
       transition: all 0.2s;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      touch-action: manipulation;
+      position: relative;
+      z-index: 10001;
     }
 
     .dialog-button:hover {
       transform: translateY(-1px);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .dialog-button:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Desktop-specific styles */
+    @media (min-width: 768px) {
+      .flutter-dialog {
+        z-index: 999999 !important;
+      }
+
+      .dialog-content {
+        z-index: 999999 !important;
+        position: relative;
+      }
+
+      .dialog-button {
+        z-index: 999999 !important;
+        min-height: 44px;
+        font-size: 18px;
+        padding: 16px 24px;
+      }
     }
 
     .dialog-button.secondary {
@@ -284,13 +315,37 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
       if (iframe) {
         iframe.classList.add('dialog-active');
-        iframe.style.pointerEvents = 'none';
-        iframe.style.zIndex = '-1';
+        iframe.style.pointerEvents = 'none !important';
+        iframe.style.zIndex = '-999';
+        iframe.style.position = 'relative';
+        // Additional desktop-specific blocking
+        iframe.style.visibility = 'hidden';
+        iframe.style.display = 'none';
       }
 
       if (blocker) {
         blocker.classList.add('active');
+        blocker.style.zIndex = '9998';
+        blocker.style.pointerEvents = 'auto';
         console.log('🚫 Dialog blocker activated');
+      }
+
+      // Create additional overlay for desktop
+      let desktopBlocker = document.getElementById('desktop-blocker');
+      if (!desktopBlocker) {
+        desktopBlocker = document.createElement('div');
+        desktopBlocker.id = 'desktop-blocker';
+        desktopBlocker.style.cssText = `
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          z-index: 9999 !important;
+          background: transparent !important;
+          pointer-events: none !important;
+        `;
+        document.body.appendChild(desktopBlocker);
       }
 
       // Additional method: try to pause video
@@ -308,11 +363,15 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       const iframe = document.getElementById('vimeo-player');
       const blocker = document.getElementById('dialog-blocker');
       const htmlDialog = document.getElementById('html-dialog');
+      const desktopBlocker = document.getElementById('desktop-blocker');
 
       if (iframe) {
         iframe.classList.remove('dialog-active');
         iframe.style.pointerEvents = 'auto';
         iframe.style.zIndex = '1';
+        iframe.style.position = 'absolute';
+        iframe.style.visibility = 'visible';
+        iframe.style.display = 'block';
       }
 
       if (blocker) {
@@ -323,6 +382,11 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       if (htmlDialog) {
         htmlDialog.classList.remove('active');
         console.log('✅ HTML dialog hidden');
+      }
+
+      if (desktopBlocker) {
+        desktopBlocker.remove();
+        console.log('✅ Desktop blocker removed');
       }
     };
 
@@ -345,21 +409,31 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       noBtn.parentNode.replaceChild(newNoBtn, noBtn);
       yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
 
-      // Add new event listeners
-      newNoBtn.addEventListener('click', function() {
-        console.log('🔴 NO button clicked via HTML');
+      // Add multiple event listeners for desktop/mobile compatibility
+      function handleNoClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔴 NO button clicked via HTML (desktop)');
         htmlDialog.classList.remove('active');
         window.enableVideoInteraction();
         if (callback) callback(false);
         callFlutter('dialogResult', false);
-      });
+      }
 
-      newYesBtn.addEventListener('click', function() {
-        console.log('🟢 YES button clicked via HTML');
+      function handleYesClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🟢 YES button clicked via HTML (desktop)');
         htmlDialog.classList.remove('active');
         window.enableVideoInteraction();
         if (callback) callback(true);
         callFlutter('dialogResult', true);
+      }
+
+      // Add multiple event types for maximum compatibility
+      ['click', 'mouseup', 'touchend'].forEach(eventType => {
+        newNoBtn.addEventListener(eventType, handleNoClick, { passive: false });
+        newYesBtn.addEventListener(eventType, handleYesClick, { passive: false });
       });
 
       // Show dialog
