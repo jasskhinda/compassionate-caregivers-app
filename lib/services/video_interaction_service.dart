@@ -157,24 +157,33 @@ class VideoInteractionService {
 
   // Show HTML dialog directly in webview
   static Future<void> showHtmlDialog(String title, String message, {String dialogType = 'stillWatching'}) async {
+    debugPrint('🎯 VideoInteractionService: showHtmlDialog called with type: $dialogType');
+
     if (_activeWebViewController != null) {
       try {
+        debugPrint('🎯 VideoInteractionService: Executing JavaScript to show dialog');
         await _activeWebViewController!.evaluateJavascript(
           source: """
-            console.log('🎯 Showing HTML dialog from Flutter');
+            console.log('🎯 Showing HTML dialog from Flutter, type: $dialogType');
+            console.log('🎯 Title: $title');
+            console.log('🎯 Message: $message');
+
             if (window.showHtmlDialog) {
+              console.log('🎯 Calling window.showHtmlDialog...');
               window.showHtmlDialog('$title', '$message', null, '$dialogType');
+              console.log('🎯 window.showHtmlDialog called successfully');
             } else {
-              console.error('showHtmlDialog function not found!');
+              console.error('❌ showHtmlDialog function not found on window object!');
+              console.log('Available window functions:', Object.keys(window).filter(k => k.includes('Dialog')));
             }
           """
         );
-        debugPrint('🎯 VideoInteractionService: HTML dialog triggered');
+        debugPrint('🎯 VideoInteractionService: HTML dialog JavaScript executed successfully');
       } catch (e) {
-        debugPrint('🎯 VideoInteractionService: Error showing HTML dialog: $e');
+        debugPrint('❌ VideoInteractionService: Error executing HTML dialog JavaScript: $e');
       }
     } else {
-      debugPrint('🎯 VideoInteractionService: No active WebView controller for HTML dialog');
+      debugPrint('❌ VideoInteractionService: No active WebView controller for HTML dialog');
     }
   }
 }

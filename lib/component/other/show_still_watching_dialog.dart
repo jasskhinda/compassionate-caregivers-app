@@ -4,12 +4,24 @@ import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../services/video_interaction_service.dart';
 
 Future<bool?> showStillWatchingDialog(BuildContext context) async {
-  // For web, use HTML dialog directly in the iframe
+  debugPrint('🎯 showStillWatchingDialog called, kIsWeb: $kIsWeb');
+
+  // For web, try HTML dialog first, fallback to Flutter dialog
   if (kIsWeb) {
-    return await _showHtmlDialog();
+    try {
+      debugPrint('🎯 Attempting HTML dialog for web');
+      final result = await _showHtmlDialog();
+      if (result != null) {
+        return result;
+      }
+      debugPrint('⚠️ HTML dialog failed, falling back to Flutter dialog');
+    } catch (e) {
+      debugPrint('❌ HTML dialog error: $e, falling back to Flutter dialog');
+    }
   }
 
-  // For mobile, use Flutter dialog
+  // For mobile OR fallback, use Flutter dialog
+  debugPrint('🎯 Using Flutter dialog system');
   await _disableVideoInteraction();
 
   final result = await showDialog<bool>(
@@ -144,20 +156,25 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
 // HTML dialog for web platform
 Future<bool?> _showHtmlDialog() async {
   try {
+    debugPrint('🎯 _showHtmlDialog starting...');
     await VideoInteractionService.disableVideoInteraction();
 
     // Use the webview controller to show HTML dialog
     if (VideoInteractionService.hasActiveController) {
+      debugPrint('🎯 WebView controller is active, showing HTML dialog');
       await VideoInteractionService.showHtmlDialog(
         "Are you still watching?",
         "We noticed inactivity. Are you still watching this video?"
       );
 
+      debugPrint('🎯 HTML dialog command sent successfully');
       // Return immediately - the result will be handled by JavaScript
       return true; // Temporary - this will be handled by JS callback
+    } else {
+      debugPrint('❌ No active WebView controller found for HTML dialog');
     }
   } catch (e) {
-    debugPrint('Error showing HTML dialog: $e');
+    debugPrint('❌ Error showing HTML dialog: $e');
   }
   return null;
 }
