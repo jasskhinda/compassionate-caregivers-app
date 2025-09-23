@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'video_interaction_service.dart';
 
 class NightShiftMonitoringService {
@@ -141,8 +140,8 @@ class NightShiftMonitoringService {
                         backgroundColor: Theme.of(dialogContext).dialogBackgroundColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                        )
-            title: Row(
+                        ),
+                        title: Row(
               children: [
                 Icon(Icons.nightlight_round, color: Colors.blue, size: 28),
                 SizedBox(width: 12),
