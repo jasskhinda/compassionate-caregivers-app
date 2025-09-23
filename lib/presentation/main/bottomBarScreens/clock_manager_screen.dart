@@ -13,24 +13,39 @@ class ClockManagerScreen extends StatefulWidget {
   State<ClockManagerScreen> createState() => _ClockManagerScreenState();
 }
 
-class _ClockManagerScreenState extends State<ClockManagerScreen> {
+class _ClockManagerScreenState extends State<ClockManagerScreen>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
   final ClockManagementService _clockService = ClockManagementService();
   Map<String, dynamic>? _clockStatus;
   bool _isLoading = true;
   List<Map<String, dynamic>> _recentActivity = [];
   StreamSubscription<DocumentSnapshot>? _userDataSubscription;
+  DateTime? _lastRefreshTime;
+
+  @override
+  bool get wantKeepAlive => false; // Don't keep alive to force reload on tab change
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setupRealTimeListener();
     _loadRecentActivity();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _userDataSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Reload recent activity when app comes back to foreground
+      _loadRecentActivity();
+    }
   }
 
   void _setupRealTimeListener() {
@@ -180,6 +195,19 @@ class _ClockManagerScreenState extends State<ClockManagerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
+    // Check if we need to refresh recent activity
+    final now = DateTime.now();
+    if (_lastRefreshTime == null ||
+        now.difference(_lastRefreshTime!).inSeconds > 2) {
+      _lastRefreshTime = now;
+      // Reload recent activity when returning to this tab
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadRecentActivity();
+      });
+    }
+
     final colorScheme = AppUtils.getColorScheme(context);
     final textTheme = Theme.of(context).textTheme;
 
