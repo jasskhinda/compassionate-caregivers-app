@@ -9,15 +9,20 @@ class VideoInteractionService {
   // Static reference to active WebView controller
   static InAppWebViewController? _activeWebViewController;
 
-  // Register the active WebView controller
-  static void registerWebViewController(InAppWebViewController controller) {
+  // Callback to set dialog state in video screen
+  static Function(bool)? _dialogStateCallback;
+
+  // Register the active WebView controller and dialog state callback
+  static void registerWebViewController(InAppWebViewController controller, {Function(bool)? onDialogStateChange}) {
     _activeWebViewController = controller;
+    _dialogStateCallback = onDialogStateChange;
     debugPrint('🎬 VideoInteractionService: WebView controller registered');
   }
 
   // Unregister the WebView controller
   static void unregisterWebViewController() {
     _activeWebViewController = null;
+    _dialogStateCallback = null;
     debugPrint('🎬 VideoInteractionService: WebView controller unregistered');
   }
 
@@ -73,6 +78,11 @@ class VideoInteractionService {
           """
         );
         debugPrint('🚫 VideoInteractionService: Video interaction disabled');
+
+        // Set dialog state to true
+        if (_dialogStateCallback != null) {
+          _dialogStateCallback!(true);
+        }
       } catch (e) {
         debugPrint('🚫 VideoInteractionService: Error disabling video interaction: $e');
       }
@@ -123,6 +133,11 @@ class VideoInteractionService {
           """
         );
         debugPrint('✅ VideoInteractionService: Video interaction enabled');
+
+        // Set dialog state to false
+        if (_dialogStateCallback != null) {
+          _dialogStateCallback!(false);
+        }
       } catch (e) {
         debugPrint('✅ VideoInteractionService: Error enabling video interaction: $e');
       }

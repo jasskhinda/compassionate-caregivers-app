@@ -10,52 +10,81 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
     context: context,
     barrierDismissible: false,
     useRootNavigator: true, // Show above all content including video players
-    builder: (BuildContext context) {
-      return WillPopScope(
-        onWillPop: () async => false,
-        child: Stack(
-          children: [
-            // Full screen barrier with high z-index
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () {}, // Capture all taps
-                child: Container(
-                  color: Colors.black.withOpacity(0.8),
+    barrierColor: Colors.black.withOpacity(0.8), // Strong barrier
+    builder: (BuildContext dialogContext) {
+      return PopScope(
+        canPop: false,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.black.withOpacity(0.8),
+            child: Center(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
                 ),
-              ),
-            ),
-            // Dialog with explicit z-index positioning
-            Positioned.fill(
-              child: Center(
                 child: Material(
-                  type: MaterialType.transparency,
+                  elevation: 24,
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.9,
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: AlertDialog(
-                      elevation: 1000, // Very high elevation
-                      backgroundColor: Theme.of(context).dialogBackgroundColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      title: const Text("Are you still watching?"),
-                      content: const Text("We noticed inactivity. Are you still watching this video?"),
-                      actions: [
-                        TextButton(
-                          onPressed: () async {
-                            Navigator.of(context).pop(false);
-                            await _enableVideoInteraction();
-                          },
-                          child: Text("No", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Are you still watching?",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        TextButton(
-                          onPressed: () async {
-                            Navigator.of(context).pop(true);
-                            await _enableVideoInteraction();
-                          },
-                          child: Text("Yes", style: TextStyle(color: AppUtils.getColorScheme(context).tertiaryContainer)),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "We noticed inactivity. Are you still watching this video?",
+                          style: TextStyle(fontSize: 16),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () async {
+                                  await _enableVideoInteraction();
+                                  Navigator.of(dialogContext).pop(false);
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: Colors.grey[200],
+                                  foregroundColor: Colors.black87,
+                                ),
+                                child: const Text("No"),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () async {
+                                  await _enableVideoInteraction();
+                                  Navigator.of(dialogContext).pop(true);
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: AppUtils.getColorScheme(context).primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text("Yes"),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -63,7 +92,7 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
                 ),
               ),
             ),
-          ],
+          ),
         ),
       );
     },

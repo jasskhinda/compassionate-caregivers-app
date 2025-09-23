@@ -37,6 +37,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
   bool isPlaying = false;
   bool isFullScreen = false;
+  bool _isDialogActive = false;
 
   String _generateHtmlData(String videoUrl) {
     return '''
@@ -394,7 +395,16 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
             ),
             onWebViewCreated: (controller) async {
               _webViewController = controller;
-              VideoInteractionService.registerWebViewController(controller); // Register with service
+              VideoInteractionService.registerWebViewController(
+                controller,
+                onDialogStateChange: (isActive) {
+                  if (mounted) {
+                    setState(() {
+                      _isDialogActive = isActive;
+                    });
+                  }
+                }
+              ); // Register with service
               final htmlData = _generateHtmlData(videoUrl!);
 
               await controller.loadData(
@@ -497,6 +507,17 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               // No DOM manipulation needed
             },
           ),
+          // Flutter-level overlay to block webview when dialogs are active
+          if (_isDialogActive)
+            Positioned.fill(
+              child: Container(
+                color: Colors.transparent,
+                child: AbsorbPointer(
+                  absorbing: true,
+                  child: Container(),
+                ),
+              ),
+            ),
         ],
       ),
     );
