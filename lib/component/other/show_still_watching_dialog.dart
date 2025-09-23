@@ -10,16 +10,16 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
     context: context,
     barrierDismissible: false,
     useRootNavigator: true, // Show above all content including video players
-    barrierColor: Colors.black.withOpacity(0.8), // Strong barrier
+    barrierColor: Colors.black.withOpacity(0.9), // Very strong barrier
     builder: (BuildContext dialogContext) {
       return PopScope(
         canPop: false,
-        child: Material(
-          type: MaterialType.transparency,
-          child: Container(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Container(
             width: double.infinity,
             height: double.infinity,
-            color: Colors.black.withOpacity(0.8),
+            color: Colors.black.withOpacity(0.9),
             child: Center(
               child: Container(
                 constraints: BoxConstraints(
@@ -27,13 +27,20 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
                   maxHeight: MediaQuery.of(context).size.height * 0.8,
                 ),
                 child: Material(
-                  elevation: 24,
-                  borderRadius: BorderRadius.circular(12),
+                  elevation: 50, // Even higher elevation
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -56,32 +63,56 @@ Future<bool?> showStillWatchingDialog(BuildContext context) async {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             Expanded(
-                              child: TextButton(
-                                onPressed: () async {
+                              child: GestureDetector(
+                                onTap: () async {
+                                  print('No button tapped!');
                                   await _enableVideoInteraction();
                                   Navigator.of(dialogContext).pop(false);
                                 },
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: Colors.grey[200],
-                                  foregroundColor: Colors.black87,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey[400]!, width: 2),
+                                  ),
+                                  child: const Text(
+                                    "No",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text("No"),
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 20),
                             Expanded(
-                              child: TextButton(
-                                onPressed: () async {
+                              child: GestureDetector(
+                                onTap: () async {
+                                  print('Yes button tapped!');
                                   await _enableVideoInteraction();
                                   Navigator.of(dialogContext).pop(true);
                                 },
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: AppUtils.getColorScheme(context).primary,
-                                  foregroundColor: Colors.white,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  decoration: BoxDecoration(
+                                    color: AppUtils.getColorScheme(context).primary,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppUtils.getColorScheme(context).primary, width: 2),
+                                  ),
+                                  child: const Text(
+                                    "Yes",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text("Yes"),
                               ),
                             ),
                           ],

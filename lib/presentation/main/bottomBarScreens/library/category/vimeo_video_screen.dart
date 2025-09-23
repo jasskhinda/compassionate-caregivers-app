@@ -116,17 +116,34 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       z-index: 3;
       background-color: transparent;
     }
+
+    .dialog-blocker {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+      background-color: transparent;
+      pointer-events: auto;
+      display: none;
+    }
+
+    .dialog-blocker.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div class="video-container">
-    <iframe id="vimeo-player" src="$videoUrl&title=0&byline=0&portrait=0&badge=0&playsinline=1&gesture=media" 
+    <iframe id="vimeo-player" src="$videoUrl&title=0&byline=0&portrait=0&badge=0&playsinline=1&gesture=media"
       frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen>
     </iframe>
     <div class="block-top"></div>
     <div class="block-bottom"></div>
     <div class="click-overlay" onclick="simulateTap()"></div>
   </div>
+  <div id="dialog-blocker" class="dialog-blocker"></div>
 
   <script>
     const iframe = document.getElementById('vimeo-player');
@@ -170,18 +187,45 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
     // Functions to disable/enable iframe interaction
     window.disableVideoInteraction = function() {
-      console.log('Disabling video interaction for dialog');
+      console.log('🚫 Disabling video interaction for dialog');
       const iframe = document.getElementById('vimeo-player');
+      const blocker = document.getElementById('dialog-blocker');
+
       if (iframe) {
         iframe.classList.add('dialog-active');
+        iframe.style.pointerEvents = 'none';
+        iframe.style.zIndex = '-1';
+      }
+
+      if (blocker) {
+        blocker.classList.add('active');
+        console.log('🚫 Dialog blocker activated');
+      }
+
+      // Additional method: try to pause video
+      try {
+        if (player) {
+          player.pause();
+        }
+      } catch (e) {
+        console.log('Could not pause video:', e);
       }
     };
 
     window.enableVideoInteraction = function() {
-      console.log('Enabling video interaction after dialog');
+      console.log('✅ Enabling video interaction after dialog');
       const iframe = document.getElementById('vimeo-player');
+      const blocker = document.getElementById('dialog-blocker');
+
       if (iframe) {
         iframe.classList.remove('dialog-active');
+        iframe.style.pointerEvents = 'auto';
+        iframe.style.zIndex = '1';
+      }
+
+      if (blocker) {
+        blocker.classList.remove('active');
+        console.log('✅ Dialog blocker deactivated');
       }
     };
   </script>

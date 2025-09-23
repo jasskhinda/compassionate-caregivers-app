@@ -38,6 +38,9 @@ class VideoInteractionService {
             // Method 1: Use existing function if available
             if (window.disableVideoInteraction) {
               window.disableVideoInteraction();
+              console.log('🚫 Called window.disableVideoInteraction()');
+            } else {
+              console.log('⚠️ window.disableVideoInteraction not found!');
             }
 
             // Method 2: Direct DOM manipulation as fallback
@@ -103,6 +106,9 @@ class VideoInteractionService {
             // Method 1: Use existing function if available
             if (window.enableVideoInteraction) {
               window.enableVideoInteraction();
+              console.log('✅ Called window.enableVideoInteraction()');
+            } else {
+              console.log('⚠️ window.enableVideoInteraction not found!');
             }
 
             // Method 2: Direct DOM manipulation as fallback
