@@ -466,40 +466,41 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
                         }
                       ) : const SizedBox.shrink(),
                       const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          // Show confirmation dialog
-                          bool? confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Video'),
-                              content: const Text('Are you sure you want to delete this video? This action cannot be undone.'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          );
+                      if (_role != 'Caregiver')
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            // Show confirmation dialog
+                            bool? confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Video'),
+                                content: const Text('Are you sure you want to delete this video? This action cannot be undone.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+                            );
 
-                          if (confirm == true) {
-                            try {
-                              // Delete from caregiver_videos collection
-                              // First get the assigned caregivers from categories
-                              final videoDoc = await FirebaseFirestore.instance
-                                  .collection('categories')
-                                  .doc(categoryName)
-                                  .collection('subcategories')
-                                  .doc(subcategoryName)
-                                  .collection('videos')
-                                  .doc(videoId)
-                                  .get();
+                            if (confirm == true) {
+                              try {
+                                // Delete from caregiver_videos collection
+                                // First get the assigned caregivers from categories
+                                final videoDoc = await FirebaseFirestore.instance
+                                    .collection('categories')
+                                    .doc(categoryName)
+                                    .collection('subcategories')
+                                    .doc(subcategoryName)
+                                    .collection('videos')
+                                    .doc(videoId)
+                                    .get();
 
                               List<dynamic> assignedCaregivers = [];
 

@@ -3,6 +3,7 @@ import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import '../../utils/app_utils/AppUtils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/super_admin_service.dart';
 
 class HomeAppBar extends StatelessWidget {
   final String name;
@@ -33,14 +34,54 @@ class HomeAppBar extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.45,
-                          child: Text(
-                              'Hi, $name',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)
-                          )
+                      Row(
+                        children: [
+                          SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.35,
+                              child: Text(
+                                  'Hi, $name',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: AppUtils.getColorScheme(context).onSurface)
+                              )
+                          ),
+                          const SizedBox(width: 8),
+                          FutureBuilder<bool>(
+                            future: SuperAdminService.isSuperAdmin(),
+                            builder: (context, snapshot) {
+                              if (snapshot.data == true) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade600,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Icon(
+                                        Icons.admin_panel_settings,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'SUPER',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ],
                       ),
                       Text('Your care makes all the difference...',style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[500]))
                     ],

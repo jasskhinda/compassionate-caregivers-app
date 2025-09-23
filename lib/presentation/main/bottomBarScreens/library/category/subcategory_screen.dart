@@ -179,7 +179,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                 tileColor: AppUtils.getColorScheme(context).secondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 title: Text(subcategoryName),
-                trailing: IconButton(
+                trailing: _role != 'Caregiver' ? IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () async {
                     final videoCollectionRef = FirebaseFirestore.instance
@@ -257,7 +257,7 @@ class _SubcategoryScreenState extends State<SubcategoryScreen> {
                       }
                     }
                   },
-                ),
+                ) : null,
                 onTap: () {
                   Navigator.pushNamed(
                     context,

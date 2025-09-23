@@ -183,7 +183,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 tileColor: AppUtils.getColorScheme(context).secondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 title: Text(categoryName),
-                trailing: IconButton(
+                trailing: _role != 'Caregiver' ? IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () async {
                     final subcategoriesRef = FirebaseFirestore.instance
@@ -260,7 +260,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       }
                     }
                   },
-                ),
+                ) : null,
                 onTap: () {
                   Navigator.pushNamed(
                     context,
