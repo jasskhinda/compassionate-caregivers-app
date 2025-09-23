@@ -4,24 +4,9 @@ import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import '../../services/video_interaction_service.dart';
 
 Future<bool?> showStillWatchingDialog(BuildContext context) async {
-  debugPrint('🎯 showStillWatchingDialog called, kIsWeb: $kIsWeb');
+  debugPrint('🎯 showStillWatchingDialog called - using Flutter dialog');
 
-  // For web, try HTML dialog first, fallback to Flutter dialog
-  if (kIsWeb) {
-    try {
-      debugPrint('🎯 Attempting HTML dialog for web');
-      final result = await _showHtmlDialog();
-      if (result != null) {
-        return result;
-      }
-      debugPrint('⚠️ HTML dialog failed, falling back to Flutter dialog');
-    } catch (e) {
-      debugPrint('❌ HTML dialog error: $e, falling back to Flutter dialog');
-    }
-  }
-
-  // For mobile OR fallback, use Flutter dialog
-  debugPrint('🎯 Using Flutter dialog system');
+  // Use Flutter dialog system for all platforms
   await _disableVideoInteraction();
 
   final result = await showDialog<bool>(

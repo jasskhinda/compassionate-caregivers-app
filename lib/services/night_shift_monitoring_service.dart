@@ -105,21 +105,9 @@ class NightShiftMonitoringService {
     _isAlertActive = true;
     _alertStartTime = DateTime.now();
 
-    debugPrint('🌙 _showAlertDialog called, kIsWeb: $kIsWeb');
+    debugPrint('🌙 _showAlertDialog called - using Flutter dialog');
 
-    // For web, try HTML dialog first, fallback to Flutter dialog
-    if (kIsWeb) {
-      try {
-        debugPrint('🌙 Attempting HTML Night Shift dialog for web');
-        await _showHtmlNightShiftDialog();
-        return;
-      } catch (e) {
-        debugPrint('❌ HTML Night Shift dialog error: $e, falling back to Flutter dialog');
-      }
-    }
-
-    // For mobile OR fallback, use Flutter dialog
-    debugPrint('🌙 Using Flutter Night Shift dialog system');
+    // Use Flutter dialog system for all platforms
     await _disableVideoInteraction();
 
     showDialog(
