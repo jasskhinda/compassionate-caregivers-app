@@ -35,7 +35,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   String? _subCategoryName;
   Map<String, dynamic>? args;
 
-  bool isPlaying = false;
+  bool isPlaying = true; // Start as playing (similar to public videos)
   bool isFullScreen = false;
   bool _isDialogActive = false;
 
@@ -618,8 +618,30 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
 
-        // Pause Vimeo video using the Vimeo player API
-        await _webViewController?.evaluateJavascript(source: "if(typeof player !== 'undefined') { player.pause(); }");
+        // Pause Vimeo video using direct iframe access
+        debugPrint("🛑 Pausing Vimeo video for 'Are you still watching?' dialog");
+        setState(() {
+          isPlaying = false; // Update button state
+        });
+        await _webViewController?.evaluateJavascript(source: '''
+          try {
+            // Try multiple methods to pause the video
+            var iframe = document.querySelector('iframe');
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage('{"method":"pause"}', '*');
+            }
+
+            // Also try if there's a Vimeo player object
+            if (typeof Vimeo !== 'undefined' && iframe) {
+              var player = new Vimeo.Player(iframe);
+              player.pause();
+            }
+
+            console.log('✅ Video pause attempted');
+          } catch(e) {
+            console.log('❌ Error pausing video:', e);
+          }
+        ''');
 
         // Disable video interaction before showing dialog
         await VideoInteractionService.disableVideoInteraction();
@@ -631,11 +653,86 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
         if (result == true) {
           // Resume playing if user clicked Yes
-          await _webViewController?.evaluateJavascript(source: "if(typeof player !== 'undefined') { player.play(); }");
+          debugPrint("▶️ Resuming Vimeo video after 'Yes' response");
+          setState(() {
+            isPlaying = true; // Update button state
+          });
+          await _webViewController?.evaluateJavascript(source: '''
+            try {
+              // Try multiple methods to play the video
+              var iframe = document.querySelector('iframe');
+              if (iframe && iframe.contentWindow) {
+                iframe.contentWindow.postMessage('{"method":"play"}', '*');
+              }
+
+              // Also try if there's a Vimeo player object
+              if (typeof Vimeo !== 'undefined' && iframe) {
+                var player = new Vimeo.Player(iframe);
+                player.play();
+              }
+
+              console.log('✅ Video play attempted');
+            } catch(e) {
+              console.log('❌ Error playing video:', e);
+            }
+          ''');
+        } else {
+          debugPrint("⏹️ Video remains paused after 'No' response");
+          // Keep isPlaying = false (already set above)
         }
 
         debugPrint("Still watching dialog closed with result: $result");
       });
+    });
+  }
+
+  // Video control functions
+  void _togglePlayPause() {
+    setState(() {
+      if (isPlaying) {
+        // Pause video
+        _webViewController?.evaluateJavascript(source: '''
+          try {
+            var iframe = document.querySelector('iframe');
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage('{"method":"pause"}', '*');
+            }
+            if (typeof Vimeo !== 'undefined' && iframe) {
+              var player = new Vimeo.Player(iframe);
+              player.pause();
+            }
+            console.log('✅ Video paused via button');
+          } catch(e) {
+            console.log('❌ Error pausing video via button:', e);
+          }
+        ''');
+        _stillWatchingTimer?.cancel(); // Stop timer when video is paused
+      } else {
+        // Play video
+        _webViewController?.evaluateJavascript(source: '''
+          try {
+            var iframe = document.querySelector('iframe');
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage('{"method":"play"}', '*');
+            }
+            if (typeof Vimeo !== 'undefined' && iframe) {
+              var player = new Vimeo.Player(iframe);
+              player.play();
+            }
+            console.log('✅ Video played via button');
+          } catch(e) {
+            console.log('❌ Error playing video via button:', e);
+          }
+        ''');
+        _startStillWatchingTimer(); // Start timer when play is pressed
+      }
+      isPlaying = !isPlaying;
+    });
+  }
+
+  void _toggleFullScreen() {
+    setState(() {
+      isFullScreen = !isFullScreen;
     });
   }
 
@@ -807,6 +904,8 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                 children: [
                   _buildVideoWebView(),
                   const SizedBox(height: 15),
+                  _buildVideoControls(),
+                  const SizedBox(height: 15),
                   _buildVideoInfo(videoTitle, adminName, date),
                   if ((_role == 'Admin' || _role == 'Staff') && videoUrl != null && _categoryName != null && _subCategoryName != null)
                     _AssignedCaregiverList(
@@ -827,8 +926,12 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     final vimeoUrl = videoUrl ?? '';
 
     return SizedBox(
-      height: AppUtils.getScreenSize(context).width > 1400 ? 450 : 250,
-      width: double.infinity,
+      height: AppUtils.getScreenSize(context).width >= 600
+          ? isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : (AppUtils.getScreenSize(context).width > 1400 ? 450 : 350)
+          : isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : 250,
+      width: AppUtils.getScreenSize(context).width >= 600
+          ? isFullScreen ? double.infinity : AppUtils.getScreenSize(context).width * 0.45
+          : double.infinity,
       child: Stack(
         children: [
           InAppWebView(
@@ -841,8 +944,12 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               supportZoom: false,
               disableContextMenu: true,
               transparentBackground: false,
-              useShouldOverrideUrlLoading: true,
+              useShouldOverrideUrlLoading: false, // Allow navigation for iframe loading
               allowsInlineMediaPlayback: true,
+              // iOS-specific settings for cross-origin content
+              allowFileAccessFromFileURLs: true,
+              allowUniversalAccessFromFileURLs: true,
+              clearCache: true,
             ),
             onWebViewCreated: (controller) async {
               _webViewController = controller;
@@ -869,17 +976,25 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                   final hashParam = uri.queryParameters['h'];
                   embedUrl = 'https://player.vimeo.com/video/$videoId${hashParam != null ? '?h=$hashParam' : ''}';
 
-                  // Add parameters
+                  // Add parameters for iOS compatibility
                   final separator = embedUrl.contains('?') ? '&' : '?';
-                  embedUrl = '$embedUrl${separator}title=0&byline=0&portrait=0&badge=0&autopause=0&autoplay=1';
+                  embedUrl = '$embedUrl${separator}title=0&byline=0&portrait=0&badge=0&autopause=0';
                 }
               }
 
               debugPrint("🎬 Final embed URL: $embedUrl");
 
-              // Load the Vimeo URL directly
+              debugPrint("🎬 Loading Vimeo URL directly for iOS: $embedUrl");
+
+              // Load the Vimeo embed URL directly - this should work on iOS
               await controller.loadUrl(
-                urlRequest: URLRequest(url: WebUri(embedUrl))
+                urlRequest: URLRequest(
+                  url: WebUri(embedUrl),
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                    'Referer': 'https://vimeo.com/'
+                  }
+                )
               );
 
               controller.addJavaScriptHandler(
@@ -1020,6 +1135,38 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildVideoControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: _togglePlayPause,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+            backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
+          ),
+          child: Text(
+            isPlaying ? 'Pause Video' : 'Play Video',
+            style: const TextStyle(fontSize: 16, color: Colors.white)
+          ),
+        ),
+        const SizedBox(width: 10),
+        ElevatedButton(
+          onPressed: _toggleFullScreen,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 30),
+            backgroundColor: AppUtils.getColorScheme(context).tertiaryContainer
+          ),
+          child: const Text(
+            'Full Screen',
+            style: TextStyle(fontSize: 16, color: Colors.white)
+          ),
+        ),
+      ],
     );
   }
 
