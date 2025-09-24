@@ -35,9 +35,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
           .get();
 
       if (document.exists) {
-        var data = document.data() as Map<String, dynamic>;
+        var data = document.data() as Map<String, dynamic>?;
         setState(() {
-          _role = data['role'];
+          _role = data?['role'] ?? 'Caregiver';
           _isLoading = false;
         });
       } else {

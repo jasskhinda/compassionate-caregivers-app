@@ -6,7 +6,7 @@ class SuperAdminService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Super Admin email - only this user can delete admins
+  /// Super Admin email - only this user can access advanced admin features
   static const String SUPER_ADMIN_EMAIL = 'j.khinda@ccgrhc.com';
 
   /// Check if current user is the Super Admin
@@ -35,6 +35,89 @@ class SuperAdminService {
     }
   }
 
+  /// Find and return duplicate email accounts
+  static Future<List<Map<String, dynamic>>> findDuplicateEmails() async {
+    try {
+      final snapshot = await _firestore.collection('Users').get();
+
+      Map<String, List<Map<String, dynamic>>> emailGroups = {};
+
+      // Group users by email
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final email = data['email']?.toString().toLowerCase();
+
+        if (email != null && email.isNotEmpty) {
+          if (!emailGroups.containsKey(email)) {
+            emailGroups[email] = [];
+          }
+          emailGroups[email]!.add({
+            'uid': doc.id,
+            ...data,
+          });
+        }
+      }
+
+      // Return only emails with multiple accounts
+      List<Map<String, dynamic>> duplicates = [];
+      emailGroups.forEach((email, accounts) {
+        if (accounts.length > 1) {
+          duplicates.addAll(accounts);
+        }
+      });
+
+      return duplicates;
+    } catch (e) {
+      print('Error finding duplicate emails: $e');
+      return [];
+    }
+  }
+
+  /// Remove duplicate accounts (keeps the most recent one)
+  static Future<bool> cleanupDuplicateEmails() async {
+    try {
+      final duplicates = await findDuplicateEmails();
+
+      if (duplicates.isEmpty) return true;
+
+      // Group by email again
+      Map<String, List<Map<String, dynamic>>> emailGroups = {};
+      for (var user in duplicates) {
+        final email = user['email']?.toString().toLowerCase();
+        if (email != null) {
+          if (!emailGroups.containsKey(email)) {
+            emailGroups[email] = [];
+          }
+          emailGroups[email]!.add(user);
+        }
+      }
+
+      // For each email, keep the newest account and delete others
+      for (var entry in emailGroups.entries) {
+        final accounts = entry.value;
+        if (accounts.length > 1) {
+          // Sort by creation date or uid length (newer accounts typically have longer UIDs)
+          accounts.sort((a, b) {
+            final aUid = a['uid']?.toString() ?? '';
+            final bUid = b['uid']?.toString() ?? '';
+            return bUid.length.compareTo(aUid.length); // Newest first
+          });
+
+          // Delete all but the first (newest) account
+          for (int i = 1; i < accounts.length; i++) {
+            await _firestore.collection('Users').doc(accounts[i]['uid']).delete();
+            print('Deleted duplicate account for ${entry.key}: ${accounts[i]['uid']}');
+          }
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('Error cleaning up duplicates: $e');
+      return false;
+    }
+  }
+
   /// Check if current user is a regular admin (but not super admin)
   static Future<bool> isRegularAdmin() async {
     try {
@@ -55,11 +138,31 @@ class SuperAdminService {
     }
   }
 
+  /// Check if current user is Staff
+  static Future<bool> isStaff() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return false;
+
+      final userDoc = await _firestore.collection('Users').doc(currentUser.uid).get();
+      if (!userDoc.exists) return false;
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      final userRole = userData['role']?.toString() ?? '';
+
+      return userRole == 'Staff';
+    } catch (e) {
+      print('Error checking staff status: $e');
+      return false;
+    }
+  }
+
   /// Check if a user can be deleted by the current user
   static Future<bool> canDeleteUser(String targetUserId, String targetUserRole) async {
     try {
       final isSuperAdminUser = await isSuperAdmin();
       final isRegularAdminUser = await isRegularAdmin();
+      final isStaffUser = await isStaff();
 
       // Super Admin can delete anyone (including other admins)
       if (isSuperAdminUser) {
@@ -68,6 +171,11 @@ class SuperAdminService {
 
       // Regular Admins can delete Staff and Caregivers but NOT other Admins
       if (isRegularAdminUser && targetUserRole != 'Admin') {
+        return true;
+      }
+
+      // Staff can delete Caregivers but NOT Admins or other Staff
+      if (isStaffUser && targetUserRole == 'Caregiver') {
         return true;
       }
 
@@ -140,6 +248,22 @@ class SuperAdminService {
     });
   }
 
+  /// Get current user's role for logging purposes
+  static Future<String> _getCurrentUserRole() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return 'Unknown';
+
+      final userDoc = await _firestore.collection('Users').doc(currentUser.uid).get();
+      if (!userDoc.exists) return 'Unknown';
+
+      final userData = userDoc.data() as Map<String, dynamic>;
+      return userData['role']?.toString() ?? 'Unknown';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
   /// Enhanced user deletion with super admin privileges
   static Future<void> deleteUser(String userId, String userRole) async {
     try {
@@ -169,21 +293,82 @@ class SuperAdminService {
       } catch (cloudFunctionError) {
         print('❌ Cloud Function deletion failed: $cloudFunctionError');
 
-        // Fallback to direct Firestore deletion (for super admin only)
-        if (await isSuperAdmin()) {
-          await _firestore.collection('Users').doc(userId).delete();
+        // Fallback to comprehensive Firestore deletion (for users with permissions)
+        // Since we already passed canDeleteUser() check, we have permission
+        print('🧹 Starting comprehensive user data cleanup for: $targetUserEmail');
 
-          // Update user counts
-          await _updateUserCounts(userRole, -1);
+        await _comprehensiveUserDeletion(userId, userRole, targetUserEmail);
 
-          print('✅ User deleted via direct Firestore operation (Super Admin override)');
-        } else {
-          rethrow;
-        }
+        // Log the operation based on current user role
+        final currentUserRole = await _getCurrentUserRole();
+        await logSuperAdminOperation('USER_DELETION', 'Deleted $userRole user via comprehensive Firestore cleanup (Current user: $currentUserRole)');
       }
 
     } catch (e) {
       print('❌ Error in super admin deletion: $e');
+      rethrow;
+    }
+  }
+
+  /// Comprehensive user deletion - cleans up all user data across collections
+  static Future<void> _comprehensiveUserDeletion(String userId, String userRole, String userEmail) async {
+    try {
+      print('🗑️ Step 1: Deleting main user document');
+      await _firestore.collection('Users').doc(userId).delete();
+
+      print('🗑️ Step 2: Cleaning up caregiver-specific data');
+      if (userRole == 'Caregiver') {
+        // Delete caregiver videos
+        final caregiverVideos = await _firestore
+            .collection('caregiver_videos')
+            .doc(userId)
+            .collection('videos')
+            .get();
+
+        for (final doc in caregiverVideos.docs) {
+          await doc.reference.delete();
+        }
+        await _firestore.collection('caregiver_videos').doc(userId).delete();
+
+        // Delete night shift alerts
+        final nightShiftAlerts = await _firestore
+            .collection('night_shift_alerts')
+            .where('user_id', isEqualTo: userId)
+            .get();
+
+        for (final doc in nightShiftAlerts.docs) {
+          await doc.reference.delete();
+        }
+
+        // Delete attendance records
+        final attendanceRecords = await _firestore
+            .collection('attendance')
+            .where('user_id', isEqualTo: userId)
+            .get();
+
+        for (final doc in attendanceRecords.docs) {
+          await doc.reference.delete();
+        }
+      }
+
+      print('🗑️ Step 3: Cleaning up admin alerts related to user');
+      final adminAlerts = await _firestore
+          .collection('admin_alerts')
+          .where('caregiver_id', isEqualTo: userId)
+          .get();
+
+      for (final doc in adminAlerts.docs) {
+        await doc.reference.delete();
+      }
+
+      print('🗑️ Step 4: Updating user counts');
+      await _updateUserCounts(userRole, -1);
+
+      print('✅ Comprehensive user deletion completed for: $userEmail');
+      print('⚠️ Note: Firebase Auth user still exists - admin needs to clean up via Firebase Console');
+
+    } catch (e) {
+      print('❌ Error during comprehensive user deletion: $e');
       rethrow;
     }
   }

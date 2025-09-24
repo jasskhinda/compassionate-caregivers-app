@@ -118,9 +118,9 @@ class _SubcategoryVideoScreenState extends State<SubcategoryVideoScreen> {
           .get();
 
       if (document.exists) {
-        var data = document.data() as Map<String, dynamic>;
+        var data = document.data() as Map<String, dynamic>?;
         setState(() {
-          _role = data['role'];
+          _role = data?['role'] ?? 'Caregiver';
         });
       } else {
         debugPrint("No such document!");

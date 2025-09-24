@@ -78,6 +78,96 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
     }
   }
 
+  Future<void> _cleanupDuplicateEmails() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clean Duplicate Emails'),
+        content: const Text(
+          'This will find and remove duplicate email accounts, keeping only the most recent account for each email.\n\nThis action cannot be undone. Continue?'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Clean Duplicates', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Cleaning duplicate emails...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // First find duplicates
+      final duplicates = await SuperAdminService.findDuplicateEmails();
+      final duplicateCount = duplicates.length;
+
+      // Clean them up
+      final success = await SuperAdminService.cleanupDuplicateEmails();
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (success) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Cleanup Complete'),
+            content: Text(duplicateCount > 0
+                ? 'Successfully cleaned up $duplicateCount duplicate accounts.'
+                : 'No duplicate emails found.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        throw Exception('Cleanup failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('Failed to clean duplicate emails: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   // Get user video details
   Future<void> _getUserInfo() async {
     try {
@@ -129,7 +219,7 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 10),
-                        if (_role == 'Admin' || _role == 'Staff')
+                        if (_role == 'Admin')
                           IconBasicButton(text: 'Add new users', buttonColor: AppUtils.getColorScheme(context).tertiaryContainer, textColor: Colors.white, icon: Icons.add, onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)),
 
                         if (_role == 'Admin' || _role == 'Staff') ...[
@@ -141,6 +231,16 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                             icon: Icons.nightlight_round,
                             onPressed: () => Navigator.pushNamed(context, AppRoutes.nightShiftAlertsScreen)
                           ),
+                          if (_role == 'Staff') ...[
+                            const SizedBox(height: 15),
+                            IconBasicButton(
+                              text: 'Add Users',
+                              buttonColor: AppUtils.getColorScheme(context).tertiaryContainer,
+                              textColor: Colors.white,
+                              icon: Icons.person_add,
+                              onPressed: () => Navigator.pushNamed(context, AppRoutes.createUserScreen)
+                            ),
+                          ],
                         ],
                         const SizedBox(height: 20),
 
@@ -184,6 +284,14 @@ class _ManageUserScreenState extends State<ManageUserScreen> {
                                   textColor: Colors.white,
                                   icon: Icons.nightlight_round,
                                   onPressed: () => Navigator.pushNamed(context, AppRoutes.nightShiftAlertsScreen)
+                                ),
+                                const SizedBox(height: 12),
+                                IconBasicButton(
+                                  text: 'Clean Duplicate Emails',
+                                  buttonColor: Colors.purple.shade600,
+                                  textColor: Colors.white,
+                                  icon: Icons.cleaning_services,
+                                  onPressed: _cleanupDuplicateEmails,
                                 ),
                               ],
                             ),

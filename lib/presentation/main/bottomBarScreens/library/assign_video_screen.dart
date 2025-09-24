@@ -27,6 +27,37 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
   final NotificationService _notificationService = NotificationService();
   List<String> assignedCaregivers = [];
 
+  // Function to create a secure display ID from video URL
+  String _createSecureDisplayId(String videoUrl) {
+    if (videoUrl.isEmpty) return 'No video URL';
+
+    // Extract video ID from different URL formats
+    String videoId = '';
+
+    if (videoUrl.contains('vimeo.com/video/')) {
+      // Vimeo URL: https://player.vimeo.com/video/1121625494?h=f812d12007
+      final match = RegExp(r'vimeo\.com/video/([0-9]+)').firstMatch(videoUrl);
+      if (match != null) {
+        videoId = match.group(1) ?? '';
+        return 'VID-${videoId.substring(0, 4)}****';
+      }
+    } else if (videoUrl.contains('youtube.com/watch') || videoUrl.contains('youtu.be/')) {
+      // YouTube URLs
+      final match = RegExp(r'(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]+)').firstMatch(videoUrl);
+      if (match != null) {
+        videoId = match.group(1) ?? '';
+        return 'YT-${videoId.substring(0, 4)}****';
+      }
+    }
+
+    // Fallback for other URLs - show first 12 chars + masked rest
+    if (videoUrl.length > 12) {
+      return '${videoUrl.substring(0, 12)}****[PROTECTED]';
+    }
+
+    return 'VID-[PROTECTED]';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -377,7 +408,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
 
                         // Paste Link
                         Text(
-                            'Youtube Video ID',
+                            'Video ID',
                             style: TextStyle(color: AppUtils.getColorScheme(context).onSurface, fontWeight: FontWeight.bold)
                         ),
                         const SizedBox(height: 4),
@@ -389,7 +420,7 @@ class _AssignVideoScreenState extends State<AssignVideoScreen> {
                             borderRadius: BorderRadius.circular(15),
                           ),
                           child: Text(
-                              videoLink,
+                              _createSecureDisplayId(videoLink),
                               style: TextStyle(color: AppUtils.getColorScheme(context).onSurface)
                           ),
                         ),

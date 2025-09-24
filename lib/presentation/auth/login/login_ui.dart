@@ -70,6 +70,34 @@ class _LoginUiState extends State<LoginUi> {
           .doc(user.uid)
           .get();
 
+      debugPrint('🔍 Login: User document exists: ${userDoc.exists}');
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        debugPrint('🔍 Login: User data fields: ${data?.keys.toList()}');
+        debugPrint('🔍 Login: Role: ${data?['role']}');
+        debugPrint('🔍 Login: Name: ${data?['name']}');
+        debugPrint('🔍 Login: Shift Type: ${data?['shift_type']}');
+
+        // Auto-update specific users to Admin role
+        final adminEmails = [
+          'j.khinda@ccgrhc.com',
+          // Only j.khinda is super admin, others can be regular admins
+          // Add more admin emails here if needed
+        ];
+
+        if (adminEmails.contains(user.email) && data?['role'] != 'Admin') {
+          debugPrint('🔧 Updating ${user.email} to Admin role...');
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(user.uid)
+              .update({
+                'role': 'Admin',
+                'name': data?['name'] ?? (user.email == 'j.khinda@ccgrhc.com' ? 'Jass Khinda' : data?['name']),
+              });
+          debugPrint('✅ User role updated to Admin');
+        }
+      }
+
       if (!userDoc.exists) {
         debugPrint('🔧 Login: User document missing, creating...');
         
@@ -92,66 +120,94 @@ class _LoginUiState extends State<LoginUi> {
         debugPrint('✅ Login: User document created successfully');
       }
 
-      // Save FCM token
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
-
-      // Check if user is a night shift caregiver and auto clock-in if within time window
-      final userDocData = (await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .get()).data();
-
-      if (userDocData != null &&
-          userDocData['role'] == 'Caregiver' &&
-          userDocData['shift_type'] == 'Night') {
-
-        // Check if current time is between 8pm-1am
-        final now = DateTime.now();
-        final hour = now.hour;
-
-        // 8pm (20:00) to midnight OR midnight to 1am (01:00)
-        if ((hour >= 20 && hour <= 23) || (hour >= 0 && hour <= 1)) {
-          // Auto clock-in the night shift caregiver
+      // Save FCM token (handle iOS simulator issue)
+      try {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
           await FirebaseFirestore.instance
               .collection('Users')
               .doc(user.uid)
-              .set({
-                'is_clocked_in': true,
-                'last_clock_in_time': FieldValue.serverTimestamp(),
-                'auto_clocked_in': true,
-              }, SetOptions(merge: true));
-
-          // Create attendance record
-          await FirebaseFirestore.instance
-              .collection('attendance')
-              .add({
-                'user_id': user.uid,
-                'user_name': userDocData['name'],
-                'clock_in_time': FieldValue.serverTimestamp(),
-                'type': 'auto_night_shift',
-                'date': DateTime.now().toIso8601String().split('T')[0],
-              });
-
-          // Create admin notification for clock-in
-          await FirebaseFirestore.instance
-              .collection('admin_alerts')
-              .add({
-                'type': 'night_shift_clock_in',
-                'caregiver_id': user.uid,
-                'caregiver_name': userDocData['name'],
-                'message': '${userDocData['name']} clocked in for night shift',
-                'timestamp': FieldValue.serverTimestamp(),
-                'read': false,
-                'status': 'clocked_in',
-                'clock_in_time': FieldValue.serverTimestamp(),
-              });
-
-          debugPrint('✅ Night shift caregiver auto-clocked in');
+              .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
+          debugPrint('✅ FCM token saved successfully');
+        } else {
+          debugPrint('⚠️ FCM token is null (normal on iOS simulator)');
         }
+      } catch (e) {
+        debugPrint('⚠️ Could not get FCM token (normal on iOS simulator): $e');
+        // Continue without FCM token - it's not critical for login
+      }
+
+      // Check if user is a night shift caregiver and auto clock-in if within time window
+      try {
+        final userDocSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .get();
+
+        final userDocData = userDocSnapshot.data();
+        debugPrint('🔍 Login: Checking night shift for user...');
+        debugPrint('🔍 Login: User data is null? ${userDocData == null}');
+
+        if (userDocData != null) {
+          final role = userDocData['role'] as String?;
+          final shiftType = userDocData['shift_type'] as String?;
+
+          debugPrint('🔍 Login: Role type: ${role.runtimeType}, value: $role');
+          debugPrint('🔍 Login: Shift type: ${shiftType.runtimeType}, value: $shiftType');
+
+          if (role == 'Caregiver' && shiftType == 'Night') {
+            // Check if current time is between 8pm-1am
+            final now = DateTime.now();
+            final hour = now.hour;
+
+            // 8pm (20:00) to midnight OR midnight to 1am (01:00)
+            if ((hour >= 20 && hour <= 23) || (hour >= 0 && hour <= 1)) {
+              // Auto clock-in the night shift caregiver
+              await FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(user.uid)
+                  .set({
+                    'is_clocked_in': true,
+                    'last_clock_in_time': FieldValue.serverTimestamp(),
+                    'auto_clocked_in': true,
+                  }, SetOptions(merge: true));
+
+              // Get user name safely with fallback
+              final userName = userDocData['name'] ?? user.email?.split('@')[0] ?? 'Unknown';
+
+              // Create attendance record
+              await FirebaseFirestore.instance
+                  .collection('attendance')
+                  .add({
+                    'user_id': user.uid,
+                    'user_name': userName,
+                    'clock_in_time': FieldValue.serverTimestamp(),
+                    'type': 'auto_night_shift',
+                    'date': DateTime.now().toIso8601String().split('T')[0],
+                  });
+
+              // Create admin notification for clock-in
+              await FirebaseFirestore.instance
+                  .collection('admin_alerts')
+                  .add({
+                    'type': 'night_shift_clock_in',
+                    'caregiver_id': user.uid,
+                    'caregiver_name': userName,
+                    'message': '$userName clocked in for night shift',
+                    'timestamp': FieldValue.serverTimestamp(),
+                    'read': false,
+                    'status': 'clocked_in',
+                    'clock_in_time': FieldValue.serverTimestamp(),
+                  });
+
+              debugPrint('✅ Night shift caregiver auto-clocked in');
+            }
+          }
+        }
+      } catch (e, stackTrace) {
+        debugPrint('❌ Login: Error during night shift check: $e');
+        debugPrint('❌ Login: Stack trace: $stackTrace');
+        // Continue with login even if night shift check fails
       }
 
       if (!mounted) return;

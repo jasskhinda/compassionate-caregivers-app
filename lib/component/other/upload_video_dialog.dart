@@ -58,7 +58,7 @@ class _UploadVideoDialogState extends State<UploadVideoDialog> {
 
     setState(() {
       _isUploading = true;
-      _statusText = 'Creating Vimeo upload ticket...';
+      _statusText = 'Preparing upload...';
     });
 
     try {
@@ -87,7 +87,7 @@ class _UploadVideoDialogState extends State<UploadVideoDialog> {
       final String videoId = videoUri.split('/').last;
 
       setState(() {
-        _statusText = 'Uploading video bytes to Vimeo...';
+        _statusText = 'Uploading video...';
       });
 
       final bytes = await _pickedVideo!.readAsBytes();
@@ -110,7 +110,7 @@ class _UploadVideoDialogState extends State<UploadVideoDialog> {
       );
 
       setState(() {
-        _statusText = 'Processing video on Vimeo...';
+        _statusText = 'Processing video...';
       });
 
       // Step 3: Wait for Vimeo to finish processing

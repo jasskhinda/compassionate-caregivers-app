@@ -418,16 +418,46 @@ class _ChatScreenState extends State<ChatScreen> {
         automaticallyImplyLeading: true,
         backgroundColor: AppUtils.getColorScheme(context).surface,
         title: GestureDetector(
-          onTap: isGroupChat && _userRole != 'Caregiver' ? () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GroupSettingsScreen(
-                  groupId: groupId,
-                  groupName: userName,
+          onTap: isGroupChat && _userRole != 'Caregiver' ? () async {
+            // Check if group still exists before navigating
+            try {
+              final groupDoc = await FirebaseFirestore.instance
+                  .collection('groups')
+                  .doc(groupId)
+                  .get();
+
+              if (!groupDoc.exists) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('This group has been deleted.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  Navigator.of(context).pop(); // Go back to chat list
+                }
+                return;
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GroupSettingsScreen(
+                    groupId: groupId,
+                    groupName: userName,
+                  ),
                 ),
-              ),
-            );
+              );
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error accessing group: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
           } : null,
           child: Row(
             children: [
@@ -798,10 +828,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   FutureBuilder<DocumentSnapshot>(
                     future: FirebaseFirestore.instance.collection('Users').doc(message.senderId).get(),
                     builder: (context, snapshot) {
-                      String senderName = 'Unknown';
-                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      String senderName = 'User no longer exists';
+                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data!.exists) {
                         final data = snapshot.data?.data() as Map<String, dynamic>?;
-                        senderName = data?['name'] ?? 'Unknown';
+                        senderName = data?['name'] ?? 'User no longer exists';
                       }
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 4),

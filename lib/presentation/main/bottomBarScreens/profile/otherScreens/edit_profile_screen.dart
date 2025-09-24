@@ -228,26 +228,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
 
-      // 🌟 NEW: Re-authenticate user before updating sensitive info
+      // Skip email update for now - requires re-authentication with password
+      // TODO: Add password prompt dialog if email needs to be changed
       final user = _auth.currentUser!;
-      if (_emailController.text.isNotEmpty) {
-        final credential = EmailAuthProvider.credential(
-          email: user.email!,
-          password: _password.toString(),
-        );
-
-        await user.reauthenticateWithCredential(credential);
-
-        // Update Email if changed
-        if (_emailController.text.isNotEmpty && _emailController.text != user.email) {
-          await user.verifyBeforeUpdateEmail(_emailController.text.trim());
-
-          // Show SnackBar saying email verification email is sent
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Verification email sent to your new email address.")),
-          );
-        }
-      }
 
       await _firestore
           .collection('Users')
@@ -257,8 +240,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'mobile_number': _mobileController.text.toString(),
             'dob': _dobController.text.toString(),
             'profile_image_url': newImageUrl,
-            if (_emailController.text.isNotEmpty) 'email': user.email!,
-            if (_role == 'Caregiver' && _shiftType != null) 'shift_type': _shiftType,
+            // Only admins and staff can change shift type, not caregivers
+            if ((_role == 'Admin' || _role == 'Staff' || _role == 'Super Admin') && _shiftType != null) 'shift_type': _shiftType,
       }, SetOptions(merge: true));
 
       if (!mounted) return;
@@ -679,8 +662,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ),
 
-                        // Shift Type for Caregivers only
-                        if (_role == 'Caregiver') ...[
+                        // Shift Type - only editable by Admin/Staff, not by Caregivers themselves
+                        if ((_role == 'Admin' || _role == 'Staff' || _role == 'Super Admin') && _shiftType != null) ...[
                           Text(
                             'Shift Type',
                             style: textTheme.titleMedium?.copyWith(

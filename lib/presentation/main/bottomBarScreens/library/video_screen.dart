@@ -60,10 +60,24 @@ class _VideoScreenState extends State<VideoScreen> {
   void _startStillWatchingTimer() {
     if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
 
-    // Pick random delay between 10 to 30 seconds
-    final int delaySeconds = 10 + (DateTime.now().millisecondsSinceEpoch % 21);
+    // Professional adaptive timing based on video duration
+    _controller.duration.then((duration) {
+      int delaySeconds;
+      if (duration <= 30) {
+        // Very short videos: 8-12 seconds
+        delaySeconds = 8 + (DateTime.now().millisecondsSinceEpoch % 5);
+      } else if (duration <= 120) {
+        // Short videos (up to 2 mins): 15-25 seconds
+        delaySeconds = 15 + (DateTime.now().millisecondsSinceEpoch % 11);
+      } else if (duration <= 300) {
+        // Medium videos (up to 5 mins): 25-35 seconds
+        delaySeconds = 25 + (DateTime.now().millisecondsSinceEpoch % 11);
+      } else {
+        // Long videos: 30-45 seconds
+        delaySeconds = 30 + (DateTime.now().millisecondsSinceEpoch % 16);
+      }
 
-    _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
+      _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
       final playerState = await _controller.playerState;
 
       if (playerState == PlayerState.playing) {
@@ -84,6 +98,7 @@ class _VideoScreenState extends State<VideoScreen> {
 
       _hasAskedStillWatching = true; // Only ask once
       _stillWatchingTimer = null;
+      });
     });
   }
   // Future<void> rewind() async {
@@ -121,7 +136,7 @@ class _VideoScreenState extends State<VideoScreen> {
       _subCategoryName = args?['subcategoryName'];
 
       // Debug: Log video initialization
-      debugPrint("YouTube Video initialized - videoId: $videoId, videoUrl: $videoUrl");
+      debugPrint("Video initialized - ID: [PROTECTED] (${videoUrl?.isNotEmpty == true ? 'URL provided' : 'No URL'})");
       debugPrint("Video tracking parameters: userId: ${_auth.currentUser?.uid}, role: $_role");
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -134,19 +149,45 @@ class _VideoScreenState extends State<VideoScreen> {
 
   Future<void> _getUserInfo() async {
     try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint("No authenticated user found");
+        return;
+      }
+
       DocumentSnapshot document = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_auth.currentUser!.uid)
+          .doc(user.uid)
           .get();
 
       if (document.exists) {
-        var data = document.data() as Map<String, dynamic>;
-        setState(() {
-          _role = data['role'];
-        });
+        var data = document.data() as Map<String, dynamic>?;
+        if (data != null) {
+          setState(() {
+            _role = data['role'] ?? 'Caregiver'; // Default to Caregiver if role is missing
+          });
+        } else {
+          debugPrint("User document exists but data is null");
+          setState(() => _role = 'Caregiver');
+        }
+      } else {
+        debugPrint("User document does not exist, creating with default role");
+        // Create user document with default role
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .set({
+          'role': 'Caregiver',
+          'name': user.email?.split('@')[0] ?? 'Unknown',
+          'email': user.email,
+          'created_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        setState(() => _role = 'Caregiver');
       }
     } catch (e) {
       debugPrint("Error fetching user role: $e");
+      // Set default role on error
+      setState(() => _role = 'Caregiver');
     }
   }
 

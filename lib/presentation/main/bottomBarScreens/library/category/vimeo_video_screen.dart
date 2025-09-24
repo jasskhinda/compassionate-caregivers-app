@@ -40,6 +40,43 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   bool _isDialogActive = false;
 
   String _generateHtmlData(String videoUrl) {
+    // Convert Vimeo URL to embed format
+    String embedUrl = videoUrl;
+
+    debugPrint("🎬 Original video URL: $videoUrl");
+
+    // Parse the URL to properly handle parameters
+    if (videoUrl.contains('vimeo.com/') || videoUrl.contains('player.vimeo.com/')) {
+      final uri = Uri.parse(videoUrl);
+
+      // Check if URL needs conversion to embed format
+      if (!videoUrl.contains('player.vimeo.com/')) {
+        // Extract video ID from regular Vimeo URL
+        final pathSegments = uri.pathSegments;
+        if (pathSegments.isNotEmpty) {
+          final videoId = pathSegments.last;
+          // Include hash parameter if present for private videos
+          final hashParam = uri.queryParameters['h'];
+          embedUrl = 'https://player.vimeo.com/video/$videoId${hashParam != null ? '?h=$hashParam' : ''}';
+        }
+      } else {
+        // Already in player format - extract video ID and hash
+        final pathSegments = uri.pathSegments;
+        if (pathSegments.length >= 2) {
+          final videoId = pathSegments.last;
+          final hashParam = uri.queryParameters['h'];
+          // Rebuild URL to ensure it's clean
+          embedUrl = 'https://player.vimeo.com/video/$videoId${hashParam != null ? '?h=$hashParam' : ''}';
+        }
+      }
+
+      // Add additional parameters using proper separator
+      final separator = embedUrl.contains('?') ? '&' : '?';
+      embedUrl = '$embedUrl${separator}title=0&byline=0&portrait=0&badge=0&autopause=0&playsinline=1';
+    }
+
+    debugPrint("🎬 Final Vimeo embed URL: $embedUrl");
+
     return '''
 <!DOCTYPE html>
 <html>
@@ -53,6 +90,18 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       background-color: black;
       height: 100%;
       overflow: hidden;
+      /* Security: Disable text selection and interactions */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-drag: none;
+      -khtml-user-drag: none;
+      -moz-user-drag: none;
+      -o-user-drag: none;
+      user-drag: none;
     }
 
     .video-container {
@@ -264,7 +313,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 </head>
 <body>
   <div class="video-container">
-    <iframe id="vimeo-player" src="$videoUrl&title=0&byline=0&portrait=0&badge=0&playsinline=1&gesture=media"
+    <iframe id="vimeo-player" src="$embedUrl"
       frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen>
     </iframe>
     <div class="block-top"></div>
@@ -286,8 +335,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   </div>
 
   <script>
-    const iframe = document.getElementById('vimeo-player');
-    const player = new Vimeo.Player(iframe);
+    let player = null;
 
     // Safe communication with Flutter
     function callFlutter(method, ...args) {
@@ -302,27 +350,49 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       }
     }
 
-    // Wait for player to be ready
-    player.ready().then(function() {
-      console.log('Vimeo player ready');
-      callFlutter('vimeoReady');
-    });
+    // Wait for iframe to load first
+    window.addEventListener('load', function() {
+      console.log('🎬 Page loaded, initializing Vimeo player...');
 
-    // Track progress updates
-    player.on('timeupdate', function(data) {
-      console.log('Vimeo timeupdate:', data.seconds, '/', data.duration);
-      callFlutter('videoProgress', data.seconds, data.duration);
-    });
+      const iframe = document.getElementById('vimeo-player');
+      if (!iframe) {
+        console.error('❌ Vimeo iframe not found!');
+        return;
+      }
 
-    // Track play/pause events
-    player.on('play', function() {
-      console.log('Vimeo play started');
-      callFlutter('videoPlay');
-    });
+      console.log('✅ Iframe found, src:', iframe.src);
 
-    player.on('pause', function() {
-      console.log('Vimeo paused');
-      callFlutter('videoPause');
+      try {
+        player = new Vimeo.Player(iframe);
+        window.player = player; // Make player globally accessible
+
+        // Wait for player to be ready
+        player.ready().then(function() {
+          console.log('✅ Video player ready');
+          callFlutter('vimeoReady');
+        }).catch(function(error) {
+          console.error('❌ Player ready error:', error);
+        });
+
+        // Track progress updates
+        player.on('timeupdate', function(data) {
+          console.log('Video progress:', data.seconds, '/', data.duration);
+          callFlutter('videoProgress', data.seconds, data.duration);
+        });
+
+        // Track play/pause events
+        player.on('play', function() {
+          console.log('Video play started');
+          callFlutter('videoPlay');
+        });
+
+        player.on('pause', function() {
+          console.log('Video paused');
+          callFlutter('videoPause');
+        });
+      } catch (error) {
+        console.error('❌ Error creating Vimeo player:', error);
+      }
     });
 
     // Functions to disable/enable iframe interaction
@@ -487,6 +557,45 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
         window.enableVideoInteraction();
       }
     };
+
+    // Security measures to prevent URL access
+
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    // Disable developer tools keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+Shift+C, Ctrl+A
+      if (e.key === 'F12' ||
+          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+          (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 'a' || e.key === 'A' ||
+                         e.key === 's' || e.key === 'S'))) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Disable text selection and drag
+    document.addEventListener('selectstart', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    document.addEventListener('dragstart', function(e) {
+      e.preventDefault();
+      return false;
+    });
+
+    // Clear console periodically (minimal impact on performance)
+    setInterval(function() {
+      if (typeof console !== 'undefined' && console.clear) {
+        try { console.clear(); } catch(e) {}
+      }
+    }, 5000);
+
   </script>
 </body>
 </html>
@@ -496,7 +605,9 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   void _startStillWatchingTimer() {
     if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
 
-    final delaySeconds = 10 + (DateTime.now().millisecondsSinceEpoch % 21); // 10-30 sec random
+    // Professional adaptive timing - for Vimeo we'll use a standard approach
+    // since duration detection is more complex with iframe
+    int delaySeconds = 12 + (DateTime.now().millisecondsSinceEpoch % 16); // 12-27 seconds
 
     _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
       if (!mounted) return;
@@ -507,14 +618,22 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
 
-        // Pause Vimeo video by sending postMessage to iframe
-        const jsCode = "document.querySelector('video').pause();";
-        await _webViewController!.evaluateJavascript(source: jsCode);
-        setState(() => isPlaying = !isPlaying);
+        // Pause Vimeo video using the Vimeo player API
+        await _webViewController?.evaluateJavascript(source: "if(typeof player !== 'undefined') { player.pause(); }");
+
+        // Disable video interaction before showing dialog
+        await VideoInteractionService.disableVideoInteraction();
 
         final result = await showStillWatchingDialog(context);
 
-        // No auto play or pause on dialog buttons
+        // Re-enable video interaction after dialog
+        await VideoInteractionService.enableVideoInteraction();
+
+        if (result == true) {
+          // Resume playing if user clicked Yes
+          await _webViewController?.evaluateJavascript(source: "if(typeof player !== 'undefined') { player.play(); }");
+        }
+
         debugPrint("Still watching dialog closed with result: $result");
       });
     });
@@ -539,8 +658,8 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       _subCategoryName = args?['subcategoryName'];
 
       // Debug: Log video initialization
-      debugPrint("Vimeo Video initialized - videoId: $videoId, videoUrl: $videoUrl");
-      debugPrint("Vimeo tracking parameters: userId: ${_auth.currentUser?.uid}, role: $_role");
+      debugPrint("Video initialized - ID: [PROTECTED] (${videoUrl?.isNotEmpty == true ? 'URL provided' : 'No URL'})");
+      debugPrint("Video tracking parameters: userId: [PROTECTED], role: $_role");
 
       // Start paused, so no auto-play on load
       isPlaying = false;
@@ -551,17 +670,45 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
 
   Future<void> _getUserInfo() async {
     try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint("No authenticated user found");
+        return;
+      }
+
       DocumentSnapshot document = await FirebaseFirestore.instance
           .collection('Users')
-          .doc(_auth.currentUser!.uid)
+          .doc(user.uid)
           .get();
 
       if (document.exists) {
-        var data = document.data() as Map<String, dynamic>;
-        setState(() => _role = data['role']);
+        var data = document.data() as Map<String, dynamic>?;
+        if (data != null) {
+          setState(() {
+            _role = data['role'] ?? 'Caregiver'; // Default to Caregiver if role is missing
+          });
+        } else {
+          debugPrint("User document exists but data is null");
+          setState(() => _role = 'Caregiver');
+        }
+      } else {
+        debugPrint("User document does not exist, creating with default role");
+        // Create user document with default role
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .set({
+          'role': 'Caregiver',
+          'name': user.email?.split('@')[0] ?? 'Unknown',
+          'email': user.email,
+          'created_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        setState(() => _role = 'Caregiver');
       }
     } catch (e) {
       debugPrint("Error fetching user role: $e");
+      // Set default role on error
+      setState(() => _role = 'Caregiver');
     }
   }
 
@@ -648,7 +795,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
     final adminName = args?['adminName'] ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Vimeo Player")),
+      appBar: AppBar(title: const Text("Video Player")),
       body: SingleChildScrollView(
         child: Center(
           child: SizedBox(
@@ -685,7 +832,7 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
       child: Stack(
         children: [
           InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(vimeoUrl)),
+            initialUrlRequest: URLRequest(url: WebUri("about:blank")),
             initialSettings: InAppWebViewSettings(
               javaScriptEnabled: true,
               mediaPlaybackRequiresUserGesture: false,
@@ -693,8 +840,9 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               disableVerticalScroll: true,
               supportZoom: false,
               disableContextMenu: true,
-              transparentBackground: true,
+              transparentBackground: false,
               useShouldOverrideUrlLoading: true,
+              allowsInlineMediaPlayback: true,
             ),
             onWebViewCreated: (controller) async {
               _webViewController = controller;
@@ -708,13 +856,30 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
                   }
                 }
               ); // Register with service
-              final htmlData = _generateHtmlData(videoUrl!);
 
-              await controller.loadData(
-                data: htmlData,
-                baseUrl: WebUri("about:blank"),
-                mimeType: 'text/html',
-                encoding: 'utf-8',
+              // Create proper embed URL
+              String embedUrl = videoUrl!;
+              debugPrint("🎬 Original video URL: $videoUrl");
+
+              if (videoUrl!.contains('player.vimeo.com')) {
+                final uri = Uri.parse(videoUrl!);
+                final pathSegments = uri.pathSegments;
+                if (pathSegments.length >= 2) {
+                  final videoId = pathSegments.last;
+                  final hashParam = uri.queryParameters['h'];
+                  embedUrl = 'https://player.vimeo.com/video/$videoId${hashParam != null ? '?h=$hashParam' : ''}';
+
+                  // Add parameters
+                  final separator = embedUrl.contains('?') ? '&' : '?';
+                  embedUrl = '$embedUrl${separator}title=0&byline=0&portrait=0&badge=0&autopause=0&autoplay=1';
+                }
+              }
+
+              debugPrint("🎬 Final embed URL: $embedUrl");
+
+              // Load the Vimeo URL directly
+              await controller.loadUrl(
+                urlRequest: URLRequest(url: WebUri(embedUrl))
               );
 
               controller.addJavaScriptHandler(

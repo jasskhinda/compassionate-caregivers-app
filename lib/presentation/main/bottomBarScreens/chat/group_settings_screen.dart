@@ -70,7 +70,56 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
             return Center(child: CircularProgressIndicator());
           }
 
-          final groupData = groupSnapshot.data!.data() as Map<String, dynamic>;
+          // Check if group still exists
+          if (!groupSnapshot.data!.exists) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.group_off, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Group Not Found',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'This group has been deleted.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pop(); // Go back to chat list
+                    },
+                    child: Text('Go Back'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final groupData = groupSnapshot.data!.data() as Map<String, dynamic>?;
+
+          // Double check for null data
+          if (groupData == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Group data unavailable'),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Go Back'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           final List<String> members = List<String>.from(groupData['members'] ?? []);
 
           return Column(

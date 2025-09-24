@@ -43,7 +43,7 @@ class NightShiftMonitoringService {
     }
 
     final role = userData['role'];
-    final shiftType = userData['shift_type'];
+    final shiftType = userData['shift_type'] ?? 'Day'; // Default to 'Day' for old users
     final isClockedIn = userData['is_clocked_in'] ?? false;
 
     debugPrint('NightShift: User role: $role, shift: $shiftType, clocked in: $isClockedIn');
@@ -58,14 +58,13 @@ class NightShiftMonitoringService {
       return;
     }
 
-    // For testing: Skip clock-in requirement and start monitoring immediately
-    // if (!isClockedIn) {
-    //   debugPrint('NightShift: User is not clocked in, monitoring will start when they clock in');
-    //   return;
-    // }
+    // Only monitor clocked-in night shift caregivers
+    if (!isClockedIn) {
+      debugPrint('NightShift: User is not clocked in, monitoring will start when they clock in');
+      return;
+    }
 
     debugPrint('NightShift: Starting monitoring for night shift caregiver');
-    // Schedule first alert quickly for testing
     _scheduleNextAlert(isFirstAlert: true);
   }
 
@@ -437,7 +436,7 @@ class NightShiftMonitoringService {
     if (userData == null) return;
 
     final role = userData['role'];
-    final shiftType = userData['shift_type'];
+    final shiftType = userData['shift_type'] ?? 'Day'; // Default to 'Day' for old users
 
     if (role == 'Caregiver' && shiftType == 'Night') {
       debugPrint('NightShift: Night shift caregiver clocked in, starting monitoring');
@@ -469,7 +468,7 @@ class NightShiftMonitoringService {
     final userData = userDoc.data();
     if (userData != null &&
         userData['role'] == 'Caregiver' &&
-        userData['shift_type'] == 'Night' &&
+        (userData['shift_type'] ?? 'Day') == 'Night' &&
         userData['is_clocked_in'] == false) {
       debugPrint('NightShift: Caregiver clocked out, stopping monitoring');
       stopMonitoring();

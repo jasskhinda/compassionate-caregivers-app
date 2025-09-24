@@ -44,12 +44,17 @@ class _NavDrawerState extends State<NavDrawer> {
           final userData = userDoc.data() as Map<String, dynamic>;
           final role = userData['role'] ?? '';
 
-          debugPrint('NavDrawer: User role detected: $role');
+          debugPrint('🔍 NavDrawer: User role detected: $role');
+          debugPrint('🔍 NavDrawer: Is Admin? ${role == 'Admin'}');
+          debugPrint('🔍 NavDrawer: Is Staff? ${role == 'Staff'}');
+
           setState(() {
             _userRole = role;
             _isAdmin = role == 'Admin';
             _isStaff = role == 'Staff';
           });
+
+          debugPrint('🔍 NavDrawer: After setState - _isAdmin: $_isAdmin, _isStaff: $_isStaff');
         }
       }
     } catch (e) {
@@ -137,7 +142,7 @@ class _NavDrawerState extends State<NavDrawer> {
             if (_isAdmin || _isStaff)
               _buildListTile(
                 index: 4,
-                icon: widget.selectedIndex == 4 ? Icons.home : Icons.home_outlined,
+                icon: widget.selectedIndex == 4 ? Icons.group : Icons.group_outlined,
                 text: 'User Management',
                 theme: AppUtils.getColorScheme(context),
                 textTheme: textTheme,

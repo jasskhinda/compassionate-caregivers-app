@@ -119,6 +119,19 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
     );
 
     try {
+      // First check if email already exists in Firestore
+      final existingUserQuery = await _firestore
+          .collection('Users')
+          .where('email', isEqualTo: email)
+          .get();
+
+      if (existingUserQuery.docs.isNotEmpty) {
+        if (!mounted) return;
+        Navigator.pop(context); // Dismiss loading
+        alertDialog(context, "This email is already registered. Each email can only have one account.");
+        return;
+      }
+
       // Store current user before creating new one
       User? originalUser = FirebaseAuth.instance.currentUser;
       String? originalEmail = originalUser?.email;
@@ -272,7 +285,11 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        items: ['Staff', 'Caregiver', _role == 'Admin' ? 'Admin' : ''].map((String role) {
+                        items: [
+                          'Staff',
+                          'Caregiver',
+                          if (_role == 'Admin') 'Admin'
+                        ].map((String role) {
                           return DropdownMenuItem(
                             value: role,
                             child: Text(role),

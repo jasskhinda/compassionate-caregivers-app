@@ -398,11 +398,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                             borderRadius: BorderRadius.circular(15)
                                         ),
                                         onPressed: () {
-                                          Navigator.pushNamed(context, AppRoutes.uploadVideoScreen);
+                                          Navigator.pushNamed(context, AppRoutes.libraryScreen);
                                         },
                                         color: AppUtils.getColorScheme(context).tertiaryContainer,
                                         child: const Text(
-                                          'Upload Videos',
+                                          'Library',
                                           style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: Colors.white
@@ -598,7 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       snapshot.data!.data() != null) {
                     final data = snapshot.data!.data() as Map<String,
                         dynamic>;
-                    adminName = data['name'] ?? 'Unknown';
+                    adminName = data['name'] ?? 'User no longer exists';
                   }
                   return AssignedVideoLayout(
                     videoTitle: videoTitle,

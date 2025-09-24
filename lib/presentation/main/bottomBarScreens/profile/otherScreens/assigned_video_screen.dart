@@ -96,9 +96,15 @@ class _AssignedVideoScreenState extends State<AssignedVideoScreen> {
                 builder: (context, snapshot) {
                   String adminName = 'Loading...';
                   if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.hasData) {
-                    final data = snapshot.data!.data() as Map<String, dynamic>;
-                    adminName = data['name'] ?? 'Unknown';
+                      snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>?;
+                    if (data != null) {
+                      adminName = data['name'] ?? 'User no longer exists';
+                    } else {
+                      adminName = 'User no longer exists';
+                    }
+                  } else if (snapshot.connectionState == ConnectionState.done) {
+                    adminName = 'Unknown';
                   }
                   return AssignedVideoLayout(
                     videoTitle: videoTitle,
