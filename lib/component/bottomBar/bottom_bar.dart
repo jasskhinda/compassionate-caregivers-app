@@ -114,71 +114,77 @@ class _BottomBarState extends State<BottomBar> {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 20),
-            child: GNav(
-                onTabChange: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                  if (widget.onTabChange != null) {
-                    widget.onTabChange!(index);
-                  }
-                },
-                selectedIndex: _currentIndex,
-                color: AppUtils.getColorScheme(context).onSurface.withAlpha(80),
-                activeColor: AppUtils.getColorScheme(context).onSurface,
-                tabBackgroundColor: AppUtils.getColorScheme(context).secondary,
-                padding: const EdgeInsets.all(12.0),
-                gap: 8,
-                textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppUtils.getColorScheme(context).onSurface),
-                tabs: [
-                  GButton(
-                      icon: _currentIndex == 0 ? Icons.home : Icons.home_outlined,
-                      text: 'Home'
-                  ),
-                  StreamBuilder<int>(
-                    stream: _getTotalUnreadCount(),
-                    builder: (context, snapshot) {
-                      final unreadCount = snapshot.data ?? 0;
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          GButton(
-                            icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
-                            text: 'Chat'
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
+            child: Stack(
+              children: [
+                GNav(
+                    onTabChange: (index) {
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                      if (widget.onTabChange != null) {
+                        widget.onTabChange!(index);
+                      }
                     },
-                  ),
-                  GButton(
-                      icon: _currentIndex == 2 ? Icons.video_library : Icons.video_library_outlined,
-                      text: 'Library'
-                  ),
-                  GButton(
-                      icon: _currentIndex == 3 ? Icons.person : Icons.person_outline,
-                      text: 'Profile'
-                  ),
+                    selectedIndex: _currentIndex,
+                    color: AppUtils.getColorScheme(context).onSurface.withAlpha(80),
+                    activeColor: AppUtils.getColorScheme(context).onSurface,
+                    tabBackgroundColor: AppUtils.getColorScheme(context).secondary,
+                    padding: const EdgeInsets.all(12.0),
+                    gap: 8,
+                    textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppUtils.getColorScheme(context).onSurface),
+                    tabs: [
+                      GButton(
+                          icon: _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                          text: 'Home'
+                      ),
+                      GButton(
+                          icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
+                          text: 'Chat'
+                      ),
+                      GButton(
+                          icon: _currentIndex == 2 ? Icons.video_library : Icons.video_library_outlined,
+                          text: 'Library'
+                      ),
+                      GButton(
+                          icon: _currentIndex == 3 ? Icons.person : Icons.person_outline,
+                          text: 'Profile'
+                      ),
 
-                  // User Management tab for Admin/Staff only
-                  if (_isAdmin || _isStaff)
-                    GButton(
-                        icon: _currentIndex == 4 ? Icons.home : Icons.home_outlined,
-                        text: 'Manage'
-                    ),
-                ]
+                      // User Management tab for Admin/Staff only
+                      if (_isAdmin || _isStaff)
+                        GButton(
+                            icon: _currentIndex == 4 ? Icons.home : Icons.home_outlined,
+                            text: 'Manage'
+                        ),
+                    ]
+                ),
+                // Red dot indicator for chat tab
+                StreamBuilder<int>(
+                  stream: _getTotalUnreadCount(),
+                  builder: (context, snapshot) {
+                    final unreadCount = snapshot.data ?? 0;
+                    if (unreadCount == 0) return const SizedBox.shrink();
+
+                    // Calculate position for chat tab (second tab, index 1)
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final tabWidth = (screenWidth - 30) / (_isAdmin || _isStaff ? 5 : 4);
+                    final chatTabPosition = tabWidth * 1.5; // Position for second tab
+
+                    return Positioned(
+                      left: chatTabPosition + 15,
+                      top: 8,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
