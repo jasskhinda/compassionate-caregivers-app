@@ -153,32 +153,116 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
       userName = userData["email"]?.toString().split('@')[0] ?? "User";
     }
 
+    final String currentUserId = _auth.currentUser!.uid;
+    final String otherUserId = userData["uid"] ?? "";
+
+    // Create chat room ID from user IDs (sorted to ensure consistency)
+    List<String> ids = [currentUserId, otherUserId];
+    ids.sort();
+    String chatRoomId = ids.join('_');
+
     return FutureBuilder<bool>(
       future: _isUserSuperAdmin(userData["email"]),
-      builder: (context, snapshot) {
-        final isSuperAdmin = snapshot.data ?? false;
+      builder: (context, superAdminSnapshot) {
+        final isSuperAdmin = superAdminSnapshot.data ?? false;
 
-        return ChatLayout(
-          hasBadge: false,
-          badgeCount: 0,
-          backgroundColor: AppUtils.getColorScheme(context).secondary,
-          title: userName,
-          subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
-          profileImageUrl: userData["profile_image_url"],
-          lastMessage: "Tap to start chatting",
-          lastMessageTime: null,
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.chatScreen,
-              arguments: {
-                'userName': userName,
-                'userEmail': userData["email"] ?? "",
-                'userID': userData["uid"] ?? "",
-                'isGroupChat': false,
+        return StreamBuilder<QuerySnapshot>(
+          stream: _firestore
+              .collection('chats')
+              .doc(chatRoomId)
+              .collection('messages')
+              .orderBy('timestamp', descending: true)
+              .limit(1)
+              .snapshots(),
+          builder: (context, messageSnapshot) {
+            String lastMessage = "Tap to start chatting";
+            DateTime? lastMessageTime;
+            int unreadCount = 0;
+
+            if (messageSnapshot.hasData && messageSnapshot.data!.docs.isNotEmpty) {
+              final lastMessageDoc = messageSnapshot.data!.docs.first;
+              final messageData = lastMessageDoc.data() as Map<String, dynamic>;
+
+              // Format last message based on type
+              String messageType = messageData['messageType'] ?? 'text';
+              switch (messageType) {
+                case 'text':
+                  lastMessage = messageData['message'] ?? '';
+                  break;
+                case 'image':
+                  lastMessage = '📷 Image';
+                  break;
+                case 'video':
+                  lastMessage = '🎥 Video';
+                  break;
+                case 'audio':
+                  lastMessage = '🎵 Audio';
+                  break;
+                default:
+                  lastMessage = messageData['message'] ?? '';
+              }
+
+              lastMessageTime = (messageData['timestamp'] as Timestamp?)?.toDate();
+
+              // Get unread count for this chat
+              return FutureBuilder<DocumentSnapshot>(
+                future: _firestore.collection('chats').doc(chatRoomId).get(),
+                builder: (context, chatSnapshot) {
+                  if (chatSnapshot.hasData && chatSnapshot.data!.exists) {
+                    final chatData = chatSnapshot.data!.data() as Map<String, dynamic>?;
+                    final fieldName = 'unreadCount_$currentUserId';
+                    unreadCount = chatData?[fieldName] ?? 0;
+                  }
+
+                  return ChatLayout(
+                    hasBadge: unreadCount > 0,
+                    badgeCount: unreadCount,
+                    backgroundColor: AppUtils.getColorScheme(context).secondary,
+                    title: userName,
+                    subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
+                    profileImageUrl: userData["profile_image_url"],
+                    lastMessage: lastMessage,
+                    lastMessageTime: lastMessageTime,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.chatScreen,
+                        arguments: {
+                          'userName': userName,
+                          'userEmail': userData["email"] ?? "",
+                          'userID': userData["uid"] ?? "",
+                          'isGroupChat': false,
+                        }
+                      );
+                    }
+                  );
+                },
+              );
+            }
+
+            return ChatLayout(
+              hasBadge: false,
+              badgeCount: 0,
+              backgroundColor: AppUtils.getColorScheme(context).secondary,
+              title: userName,
+              subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
+              profileImageUrl: userData["profile_image_url"],
+              lastMessage: lastMessage,
+              lastMessageTime: lastMessageTime,
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.chatScreen,
+                  arguments: {
+                    'userName': userName,
+                    'userEmail': userData["email"] ?? "",
+                    'userID': userData["uid"] ?? "",
+                    'isGroupChat': false,
+                  }
+                );
               }
             );
-          }
+          },
         );
       },
     );

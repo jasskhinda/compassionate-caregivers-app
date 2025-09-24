@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 
 import '../../utils/app_utils/AppUtils.dart';
+import '../../services/chat_services.dart';
 
 class BottomBar extends StatefulWidget {
   final void Function(int)? onTabChange;
@@ -19,6 +20,7 @@ class _BottomBarState extends State<BottomBar> {
   late int _currentIndex;
   bool _isAdmin = false;
   bool _isStaff = false;
+  final ChatServices _chatServices = ChatServices();
 
   @override
   void initState() {
@@ -50,6 +52,49 @@ class _BottomBarState extends State<BottomBar> {
     } catch (e) {
       debugPrint('Error checking user role: $e');
     }
+  }
+
+  Stream<int> _getTotalUnreadCount() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return Stream.value(0);
+
+    // Combine group chats and individual chats unread counts
+    final groupUnreadStream = FirebaseFirestore.instance
+        .collection('groups')
+        .where('members', arrayContains: currentUser.uid)
+        .snapshots()
+        .map((snapshot) {
+      int totalUnread = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final fieldName = 'unreadCount_${currentUser.uid}';
+        if (data?.containsKey(fieldName) == true) {
+          totalUnread += (data![fieldName] as int? ?? 0);
+        }
+      }
+      return totalUnread;
+    });
+
+    final individualUnreadStream = FirebaseFirestore.instance
+        .collection('chats')
+        .where('participants', arrayContains: currentUser.uid)
+        .snapshots()
+        .map((snapshot) {
+      int totalUnread = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final fieldName = 'unreadCount_${currentUser.uid}';
+        if (data?.containsKey(fieldName) == true) {
+          totalUnread += (data![fieldName] as int? ?? 0);
+        }
+      }
+      return totalUnread;
+    });
+
+    // Combine both streams
+    return groupUnreadStream.asyncExpand((groupCount) {
+      return individualUnreadStream.map((individualCount) => groupCount + individualCount);
+    });
   }
 
   @override
@@ -90,9 +135,33 @@ class _BottomBarState extends State<BottomBar> {
                       icon: _currentIndex == 0 ? Icons.home : Icons.home_outlined,
                       text: 'Home'
                   ),
-                  GButton(
-                      icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
-                      text: 'Chat'
+                  StreamBuilder<int>(
+                    stream: _getTotalUnreadCount(),
+                    builder: (context, snapshot) {
+                      final unreadCount = snapshot.data ?? 0;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          GButton(
+                            icon: _currentIndex == 1 ? Icons.message_rounded : Icons.message_outlined,
+                            text: 'Chat'
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   GButton(
                       icon: _currentIndex == 2 ? Icons.video_library : Icons.video_library_outlined,

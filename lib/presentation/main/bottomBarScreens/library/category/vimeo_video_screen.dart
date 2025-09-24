@@ -603,19 +603,55 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
   }
 
   void _startStillWatchingTimer() {
-    if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
+    if (_stillWatchingTimer != null) {
+      _stillWatchingTimer?.cancel();
+    }
 
-    // Professional adaptive timing - for Vimeo we'll use a standard approach
-    // since duration detection is more complex with iframe
-    int delaySeconds = 12 + (DateTime.now().millisecondsSinceEpoch % 16); // 12-27 seconds
+    // Get video duration first, then calculate smart timing
+    _webViewController?.evaluateJavascript(source: '''
+      try {
+        var video = document.querySelector('video');
+        if (video && video.duration && video.duration > 0) {
+          window.flutter_inappwebview.callHandler('videoDurationDetected', video.duration);
+        } else {
+          // Fallback for when duration isn't available yet
+          setTimeout(function() {
+            var video = document.querySelector('video');
+            if (video && video.duration && video.duration > 0) {
+              window.flutter_inappwebview.callHandler('videoDurationDetected', video.duration);
+            } else {
+              // Ultimate fallback - assume medium video
+              window.flutter_inappwebview.callHandler('videoDurationDetected', 180);
+            }
+          }, 2000);
+        }
+      } catch(e) {
+        // Fallback timing
+        window.flutter_inappwebview.callHandler('videoDurationDetected', 180);
+      }
+    ''');
+  }
 
-    _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
-      if (!mounted) return;
+  void _startSmartStillWatchingTimer(double videoDurationSeconds) {
+    if (_stillWatchingTimer != null) {
+      _stillWatchingTimer?.cancel();
+    }
 
-      _hasAskedStillWatching = true;
-      _stillWatchingTimer = null;
+    List<int> alertTimes = _calculateSmartAlertTimes(videoDurationSeconds);
+    int currentAlertIndex = 0;
 
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
+    void scheduleNextAlert() {
+      if (currentAlertIndex >= alertTimes.length || !mounted) return;
+
+      int delaySeconds = alertTimes[currentAlertIndex];
+      debugPrint("🕐 Scheduling 'Are you still watching?' alert #${currentAlertIndex + 1} at ${delaySeconds}s for ${videoDurationSeconds.toInt()}s video");
+
+      _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
+        if (!mounted) return;
+
+        debugPrint("🎯 Showing 'Are you still watching?' alert #${currentAlertIndex + 1}");
+
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
 
         // Pause Vimeo video using direct iframe access
@@ -682,50 +718,140 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
         }
 
         debugPrint("Still watching dialog closed with result: $result");
+
+        // Schedule next alert if user clicked Yes and there are more alerts
+        if (result == true) {
+          currentAlertIndex++;
+          scheduleNextAlert();
+        }
       });
-    });
+      });
+    }
+
+    // Start with the first alert
+    scheduleNextAlert();
+  }
+
+  List<int> _calculateSmartAlertTimes(double videoDurationSeconds) {
+    final duration = videoDurationSeconds.toInt();
+    List<int> alertTimes = [];
+    final random = DateTime.now().millisecondsSinceEpoch;
+
+    if (duration <= 10) {
+      // Very short videos (≤10s): Single alert at 40-60%
+      int alertAt = (duration * 0.4 + (random % (duration * 0.2).ceil()).abs()).toInt();
+      alertTimes.add(alertAt.clamp(2, duration - 1));
+
+    } else if (duration <= 30) {
+      // Short videos (≤30s): Single alert at 50-70%
+      int alertAt = (duration * 0.5 + (random % (duration * 0.2).ceil()).abs()).toInt();
+      alertTimes.add(alertAt.clamp(3, duration - 2));
+
+    } else if (duration <= 120) {
+      // Medium videos (≤2min): Single alert at 60-80%
+      int alertAt = (duration * 0.6 + (random % (duration * 0.2).ceil()).abs()).toInt();
+      alertTimes.add(alertAt.clamp(5, duration - 5));
+
+    } else if (duration <= 300) {
+      // Medium-long videos (≤5min): Two alerts at 50-60% and 80-90%
+      int firstAlert = (duration * 0.5 + (random % (duration * 0.1).ceil()).abs()).toInt();
+      int secondAlert = (duration * 0.8 + (random % (duration * 0.1).ceil()).abs()).toInt();
+
+      alertTimes.add(firstAlert.clamp(15, duration - 30));
+      alertTimes.add(secondAlert.clamp(firstAlert + 20, duration - 10));
+
+    } else if (duration <= 600) {
+      // Long videos (≤10min): Three alerts at 40-50%, 65-75%, 85-95%
+      int firstAlert = (duration * 0.4 + (random % (duration * 0.1).ceil()).abs()).toInt();
+      int secondAlert = (duration * 0.65 + (random % (duration * 0.1).ceil()).abs()).toInt();
+      int thirdAlert = (duration * 0.85 + (random % (duration * 0.1).ceil()).abs()).toInt();
+
+      alertTimes.add(firstAlert.clamp(30, duration - 60));
+      alertTimes.add(secondAlert.clamp(firstAlert + 30, duration - 30));
+      alertTimes.add(thirdAlert.clamp(secondAlert + 20, duration - 15));
+
+    } else {
+      // Very long videos (>10min): Four alerts at 30-40%, 55-65%, 75-80%, 90-95%
+      int firstAlert = (duration * 0.3 + (random % (duration * 0.1).ceil()).abs()).toInt();
+      int secondAlert = (duration * 0.55 + (random % (duration * 0.1).ceil()).abs()).toInt();
+      int thirdAlert = (duration * 0.75 + (random % (duration * 0.05).ceil()).abs()).toInt();
+      int fourthAlert = (duration * 0.9 + (random % (duration * 0.05).ceil()).abs()).toInt();
+
+      alertTimes.add(firstAlert.clamp(45, duration - 120));
+      alertTimes.add(secondAlert.clamp(firstAlert + 45, duration - 60));
+      alertTimes.add(thirdAlert.clamp(secondAlert + 30, duration - 30));
+      alertTimes.add(fourthAlert.clamp(thirdAlert + 20, duration - 15));
+    }
+
+    debugPrint("📊 Smart timing for ${duration}s video: alerts at ${alertTimes.join('s, ')}s");
+    return alertTimes;
   }
 
   // Video control functions
   void _togglePlayPause() {
+    if (isPlaying) {
+      // Pause video
+      _webViewController?.evaluateJavascript(source: '''
+        try {
+          // Method 1: Direct postMessage to Vimeo player
+          var vimeoFrame = document.querySelector('iframe[src*="player.vimeo.com"]');
+          if (vimeoFrame) {
+            vimeoFrame.contentWindow.postMessage('{"method":"pause"}', 'https://player.vimeo.com');
+            console.log('🎵 Pause message sent to Vimeo iframe');
+          }
+
+          // Method 2: Try accessing video element directly
+          var video = document.querySelector('video');
+          if (video) {
+            video.pause();
+            console.log('🎵 Video element paused directly');
+          }
+
+          // Method 3: If this page IS the Vimeo player
+          if (window.location.href.includes('player.vimeo.com')) {
+            document.dispatchEvent(new KeyboardEvent('keydown', {'key': ' ', 'code': 'Space'}));
+            console.log('🎵 Space key dispatched for pause');
+          }
+
+        } catch(e) {
+          console.log('❌ Error pausing video:', e);
+        }
+      ''');
+      _stillWatchingTimer?.cancel(); // Stop timer when video is paused
+    } else {
+      // Play video
+      _webViewController?.evaluateJavascript(source: '''
+        try {
+          // Method 1: Direct postMessage to Vimeo player
+          var vimeoFrame = document.querySelector('iframe[src*="player.vimeo.com"]');
+          if (vimeoFrame) {
+            vimeoFrame.contentWindow.postMessage('{"method":"play"}', 'https://player.vimeo.com');
+            console.log('▶️ Play message sent to Vimeo iframe');
+          }
+
+          // Method 2: Try accessing video element directly
+          var video = document.querySelector('video');
+          if (video) {
+            video.play();
+            console.log('▶️ Video element played directly');
+          }
+
+          // Method 3: If this page IS the Vimeo player
+          if (window.location.href.includes('player.vimeo.com')) {
+            document.dispatchEvent(new KeyboardEvent('keydown', {'key': ' ', 'code': 'Space'}));
+            console.log('▶️ Space key dispatched for play');
+          }
+
+        } catch(e) {
+          console.log('❌ Error playing video:', e);
+        }
+      ''');
+      // Restart smart timer when play is pressed
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startStillWatchingTimer();
+      });
+    }
     setState(() {
-      if (isPlaying) {
-        // Pause video
-        _webViewController?.evaluateJavascript(source: '''
-          try {
-            var iframe = document.querySelector('iframe');
-            if (iframe && iframe.contentWindow) {
-              iframe.contentWindow.postMessage('{"method":"pause"}', '*');
-            }
-            if (typeof Vimeo !== 'undefined' && iframe) {
-              var player = new Vimeo.Player(iframe);
-              player.pause();
-            }
-            console.log('✅ Video paused via button');
-          } catch(e) {
-            console.log('❌ Error pausing video via button:', e);
-          }
-        ''');
-        _stillWatchingTimer?.cancel(); // Stop timer when video is paused
-      } else {
-        // Play video
-        _webViewController?.evaluateJavascript(source: '''
-          try {
-            var iframe = document.querySelector('iframe');
-            if (iframe && iframe.contentWindow) {
-              iframe.contentWindow.postMessage('{"method":"play"}', '*');
-            }
-            if (typeof Vimeo !== 'undefined' && iframe) {
-              var player = new Vimeo.Player(iframe);
-              player.play();
-            }
-            console.log('✅ Video played via button');
-          } catch(e) {
-            console.log('❌ Error playing video via button:', e);
-          }
-        ''');
-        _startStillWatchingTimer(); // Start timer when play is pressed
-      }
       isPlaying = !isPlaying;
     });
   }
@@ -1005,6 +1131,15 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               );
 
               controller.addJavaScriptHandler(
+                handlerName: 'videoDurationDetected',
+                callback: (args) {
+                  final duration = args[0] as double;
+                  debugPrint("📏 Video duration detected: ${duration.toInt()}s");
+                  _startSmartStillWatchingTimer(duration);
+                },
+              );
+
+              controller.addJavaScriptHandler(
                 handlerName: 'videoProgress',
                 callback: (args) {
                   final seconds = args[0] as double;
@@ -1110,8 +1245,186 @@ class _VimeoVideoScreenState extends State<VimeoVideoScreen> {
               return NavigationActionPolicy.CANCEL;
             },
             onLoadStop: (controller, url) async {
-              // No DOM manipulation needed
+              // Hide Vimeo interface elements after page loads
+              await Future.delayed(const Duration(milliseconds: 1000)); // Wait for Vimeo to load
+
+              debugPrint("🚫 Hiding Vimeo interface elements");
+              await controller.evaluateJavascript(source: '''
+                try {
+                  // Hide Vimeo header elements
+                  var headerElements = [
+                    '.topbar', '.header', '.vp-topbar', '.vp-title',
+                    '[class*="topbar"]', '[class*="header"]', '[data-testid*="header"]',
+                    '.vp-overlay-cell-title', '.vp-overlay-cell-byline',
+                    '[aria-label*="Vimeo"]', '[title*="Vimeo"]',
+                    '.vp-overlay-cell', '.vp-controls-wrapper .vp-controls',
+                    'button[aria-label*="more"]', 'button[aria-label*="menu"]',
+                    '.vp-button-more', '.vp-button-settings',
+                    '.vp-controls .vp-controls-right .vp-button'
+                  ];
+
+                  headerElements.forEach(selector => {
+                    var elements = document.querySelectorAll(selector);
+                    elements.forEach(el => {
+                      el.style.display = 'none !important';
+                      el.style.visibility = 'hidden !important';
+                      el.style.opacity = '0 !important';
+                      el.style.pointerEvents = 'none !important';
+                    });
+                  });
+
+                  // Add CSS to aggressively block Vimeo interface
+                  var style = document.createElement('style');
+                  style.textContent = \`
+                    /* Completely hide ALL Vimeo branding and interface elements */
+                    .topbar, .header, .vp-topbar, .vp-title, .vp-byline,
+                    [class*="topbar"], [class*="header"], [class*="title"], [class*="byline"],
+                    [data-testid*="header"], [data-testid*="title"], [data-testid*="overlay"],
+                    .vp-overlay, .vp-overlay-cell, .vp-overlay-cell-title, .vp-overlay-cell-byline,
+                    [aria-label*="Vimeo"], [title*="Vimeo"], [alt*="Vimeo"],
+                    .vp-controls-wrapper .vp-controls, .vp-controls-right,
+                    button[aria-label*="more"], button[aria-label*="menu"], button[aria-label*="settings"],
+                    .vp-button-more, .vp-button-settings, .vp-button-prefs,
+                    .vp-logo, .vp-badge, .vp-title-overlay,
+                    a[href*="vimeo.com"], a[target="_blank"],
+                    .vp-controls .vp-controls-right .vp-button:not(.vp-button-play):not(.vp-button-volume):not(.vp-button-fullscreen),
+                    /* Hide login/signup prompts */
+                    [class*="login"], [class*="signup"], [class*="join"],
+                    /* Hide all overlay text and links */
+                    .vp-text-tracks, .vp-captions, .vp-chapters,
+                    /* Hide context menus */
+                    .vp-menu, .vp-context-menu, .vp-dropdown {
+                      display: none !important;
+                      visibility: hidden !important;
+                      opacity: 0 !important;
+                      pointer-events: none !important;
+                      position: absolute !important;
+                      left: -9999px !important;
+                      top: -9999px !important;
+                      width: 0 !important;
+                      height: 0 !important;
+                    }
+
+                    /* Aggressively block interaction areas */
+                    .vp-player {
+                      position: relative !important;
+                    }
+
+                    /* Block entire top area */
+                    .vp-player::before {
+                      content: '';
+                      position: absolute !important;
+                      top: 0 !important;
+                      left: 0 !important;
+                      width: 100% !important;
+                      height: 80px !important;
+                      background: transparent !important;
+                      z-index: 99999 !important;
+                      pointer-events: auto !important;
+                      cursor: default !important;
+                    }
+
+                    /* Block entire right side */
+                    .vp-player::after {
+                      content: '';
+                      position: absolute !important;
+                      top: 0 !important;
+                      right: 0 !important;
+                      width: 100px !important;
+                      height: 100% !important;
+                      background: transparent !important;
+                      z-index: 99999 !important;
+                      pointer-events: auto !important;
+                      cursor: default !important;
+                    }
+
+                    /* Block bottom-right area for logo */
+                    body::after {
+                      content: '';
+                      position: fixed !important;
+                      bottom: 10px !important;
+                      right: 10px !important;
+                      width: 80px !important;
+                      height: 50px !important;
+                      background: transparent !important;
+                      z-index: 999999 !important;
+                      pointer-events: auto !important;
+                      cursor: default !important;
+                    }
+                  \`;
+                  document.head.appendChild(style);
+
+                  console.log('✅ Vimeo interface elements blocked');
+
+                } catch(e) {
+                  console.log('❌ Error blocking Vimeo interface:', e);
+                }
+              ''');
             },
+          ),
+          // Physical overlay to block Vimeo interface elements
+          Positioned.fill(
+            child: Stack(
+              children: [
+                // Block top area (Vimeo header, logo, login buttons)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 60,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: AbsorbPointer(
+                      absorbing: true,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(color: Colors.transparent, width: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Block right side (3-dot menu, settings)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: 80,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: AbsorbPointer(
+                      absorbing: true,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(color: Colors.transparent, width: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Block bottom-right corner (Vimeo logo)
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  width: 60,
+                  height: 40,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: AbsorbPointer(
+                      absorbing: true,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(color: Colors.transparent, width: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           // Enhanced Flutter-level overlay to block webview when dialogs are active
           // Especially important for screens >1400px where video height is 450px

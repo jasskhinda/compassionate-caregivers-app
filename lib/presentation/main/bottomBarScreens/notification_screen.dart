@@ -141,24 +141,68 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
                     // Handle notification tap based on type
                     if (data != null) {
+                      debugPrint("🔗 Notification tapped with type: ${data['type']}");
+
                       switch (data['type']) {
                         case 'video_assigned':
                           if (context.mounted) {
+                            debugPrint("📺 Navigating to assigned video: ${data['videoTitle']}");
+
+                            // Check if it's a Vimeo video (private)
+                            bool isVimeoVideo = data.containsKey('restCaregiver') ||
+                                              (data['youtubeLink']?.toString().contains('vimeo.com') ?? false);
+
+                            String routeName = isVimeoVideo ? AppRoutes.vimeoVideoScreen : AppRoutes.videoScreen;
+
                             Navigator.pushNamed(
                               context,
-                              AppRoutes.videoScreen,
+                              routeName,
                               arguments: {
-                                'videoUrl': data['videoUrl'],
+                                'videoUrl': data['youtubeLink'] ?? data['videoUrl'],
                                 'videoId': data['videoId'],
                                 'videoTitle': data['videoTitle'],
                                 'categoryName': data['categoryName'],
                                 'subcategoryName': data['subcategoryName'],
+                                'date': DateFormat('dd MMM yyyy').format(DateTime.now()),
+                                'adminName': 'Admin', // You might want to get actual admin name
                               },
                             );
                           }
                           break;
-                        // Add more cases for other notification types here
+
+                        case 'exam_assigned':
+                          if (context.mounted) {
+                            debugPrint("📝 Navigating to assigned exam: ${data['examTitle']}");
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.examScreen,
+                              arguments: {
+                                'examId': data['examId'],
+                                'examTitle': data['examTitle'],
+                              },
+                            );
+                          }
+                          break;
+
+                        case 'night_shift_alert':
+                          if (context.mounted) {
+                            debugPrint("🌙 Night shift alert notification tapped");
+                            // Could navigate to a specific night shift screen or just show the alert
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(data['body'] ?? 'Night shift alert'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                          break;
+
+                        default:
+                          debugPrint("❓ Unknown notification type: ${data['type']}");
+                          break;
                       }
+                    } else {
+                      debugPrint("ℹ️ Notification tapped but no data available for deep linking");
                     }
                   }
                 },
@@ -174,10 +218,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  data?['type'] == 'video_assigned' 
-                                      ? Icons.video_library 
-                                      : Icons.notifications,
-                                  color: read 
+                                  _getNotificationIcon(data?['type']),
+                                  color: read
                                       ? AppUtils.getColorScheme(context).onSurface.withAlpha(180)
                                       : AppUtils.getColorScheme(context).primary,
                                   size: 20,
@@ -257,5 +299,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
         );
       },
     );
+  }
+
+  IconData _getNotificationIcon(String? type) {
+    switch (type) {
+      case 'video_assigned':
+        return Icons.video_library;
+      case 'exam_assigned':
+        return Icons.quiz;
+      case 'night_shift_alert':
+        return Icons.nights_stay;
+      case 'clocking_reminder':
+        return Icons.access_time;
+      case 'attendance_update':
+        return Icons.check_circle_outline;
+      default:
+        return Icons.notifications;
+    }
   }
 }

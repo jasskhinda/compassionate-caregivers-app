@@ -14,7 +14,7 @@ class NotificationService {
 
   static Future<void> init() async {
     try {
-      // Initialize local notifications
+      // Initialize local notifications with onSelectNotification handler
       const AndroidInitializationSettings initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const DarwinInitializationSettings initializationSettingsIOS =
@@ -23,11 +23,29 @@ class NotificationService {
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
       );
-      await _localNotifications.initialize(initializationSettings);
+
+      await _localNotifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          debugPrint('🔗 Local notification tapped: ${response.payload}');
+          // Handle local notification tap
+          _handleNotificationTap(response.payload);
+        },
+      );
       debugPrint('Local notifications initialized successfully');
     } catch (e) {
       debugPrint('Error initializing local notifications: $e');
     }
+  }
+
+  // Handle notification tap navigation
+  static void _handleNotificationTap(String? payload) {
+    // This would typically involve a navigation service
+    // For now, we'll just log it - you might want to implement a navigation service
+    debugPrint('🔗 Handling notification tap with payload: $payload');
+
+    // You could parse the payload and navigate to the appropriate screen
+    // This would require access to the Navigator context or a navigation service
   }
 
   // Initialize FCM
@@ -132,6 +150,15 @@ class NotificationService {
       AndroidNotification? android = message.notification?.android;
 
       if (notification != null) {
+        // Create payload with notification data for deep linking
+        String payload = '';
+        if (message.data.isNotEmpty) {
+          // Convert data to a simple string format for payload
+          payload = message.data.entries
+              .map((e) => '${e.key}:${e.value}')
+              .join('|');
+        }
+
         _localNotifications.show(
           notification.hashCode,
           notification.title,
@@ -146,6 +173,7 @@ class NotificationService {
             ),
             iOS: const DarwinNotificationDetails(),
           ),
+          payload: payload,
         );
         debugPrint('Local notification shown: ${notification.title}');
       }
