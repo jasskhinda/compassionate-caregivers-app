@@ -132,26 +132,46 @@ class ChatServices {
         .snapshots();
   }
 
-  // Send message
+  // Send message with read receipts and unread count
   Future<void> sendMessage(String receiverId, String message, {String? messageType}) async {
     try {
       final currentUser = _auth.currentUser;
       if (currentUser == null) throw Exception('User not logged in');
 
+      String chatRoomId = _getChatId(currentUser.uid, receiverId);
+
       final messageData = {
         'senderId': currentUser.uid,
         'senderEmail': currentUser.email,
         'message': message,
-        'type': messageType ?? 'text',
+        'messageType': messageType ?? 'text',
         'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'readAt': null,
       };
 
-      String chatRoomId = _getChatId(currentUser.uid, receiverId);
+      // Add message to collection
       await _firestore
           .collection('chat_rooms')
           .doc(chatRoomId)
           .collection('messages')
           .add(messageData);
+
+      // Update/create chat room document with last message and unread count
+      await _firestore
+          .collection('chat_rooms')
+          .doc(chatRoomId)
+          .set({
+        'participants': [currentUser.uid, receiverId],
+        'lastMessage': message,
+        'lastMessageType': messageType ?? 'text',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderId': currentUser.uid,
+        // Increment unread count for receiver
+        'unreadCount_$receiverId': FieldValue.increment(1),
+        // Keep sender's unread count as is (or 0 if it doesn't exist)
+      }, SetOptions(merge: true));
+
     } catch (e) {
       print('Error sending message: $e');
       rethrow;
@@ -232,6 +252,69 @@ class ChatServices {
     // Sort IDs to ensure consistent chat room ID
     final sortedIds = [userId1, userId2]..sort();
     return sortedIds.join('_');
+  }
+
+  // Mark messages as read and reset unread count
+  Future<void> markMessagesAsRead(String otherUserId) async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return;
+
+      String chatRoomId = _getChatId(currentUser.uid, otherUserId);
+
+      // Reset unread count for current user
+      await _firestore
+          .collection('chat_rooms')
+          .doc(chatRoomId)
+          .update({
+        'unreadCount_${currentUser.uid}': 0,
+      });
+
+      // Mark all unread messages from other user as read
+      final unreadMessages = await _firestore
+          .collection('chat_rooms')
+          .doc(chatRoomId)
+          .collection('messages')
+          .where('senderId', isEqualTo: otherUserId)
+          .where('read', isEqualTo: false)
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in unreadMessages.docs) {
+        batch.update(doc.reference, {
+          'read': true,
+          'readAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (unreadMessages.docs.isNotEmpty) {
+        await batch.commit();
+      }
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
+  }
+
+  // Get unread count for individual chats
+  Stream<int> getTotalUnreadCount() {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return Stream.value(0);
+
+    return _firestore
+        .collection('chat_rooms')
+        .where('participants', arrayContains: currentUser.uid)
+        .snapshots()
+        .map((snapshot) {
+      int totalUnread = 0;
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        final fieldName = 'unreadCount_${currentUser.uid}';
+        if (data?.containsKey(fieldName) == true) {
+          totalUnread += (data![fieldName] as int? ?? 0);
+        }
+      }
+      return totalUnread;
+    });
   }
 
   // Send media message

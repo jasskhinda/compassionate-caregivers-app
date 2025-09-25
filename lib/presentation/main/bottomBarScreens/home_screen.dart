@@ -587,18 +587,46 @@ class _HomeScreenState extends State<HomeScreen> {
             final assignedDate = video['assignedDate'] as Timestamp?;
             String date = assignedDate != null ? DateFormat('dd MMM yyyy').format(assignedDate.toDate()) : '';
 
-            // Get admin name
+            // Get admin name - handle public videos without assignedBy field
+            if (assignedByUid.isEmpty) {
+              // Public video without assignedBy field
+              return AssignedVideoLayout(
+                videoTitle: videoTitle,
+                adminName: 'Admin',  // Default to "Admin" for public videos
+                progress: progress,
+                date: date,
+                onTap: () {
+                  Navigator.pushNamed(
+                      context,
+                      video.containsKey('restCaregiver') ? AppRoutes.vimeoVideoScreen : AppRoutes.videoScreen,
+                      arguments: {
+                        'videoId': videoId,
+                        'date': date,
+                        'adminName': 'Admin',
+                        'videoTitle': videoTitle,
+                        'videoUrl': videoUrl
+                      }
+                  );
+                },
+              );
+            }
+
+            // For videos with assignedBy field, fetch the actual user name
             return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance.collection('Users').doc(
                     assignedByUid).get(),
                 builder: (context, snapshot) {
                   String adminName = 'Loading...';
-                  if (snapshot.connectionState == ConnectionState.done &&
-                      snapshot.hasData &&
-                      snapshot.data!.data() != null) {
-                    final data = snapshot.data!.data() as Map<String,
-                        dynamic>;
-                    adminName = data['name'] ?? 'User no longer exists';
+                  if (snapshot.connectionState == ConnectionState.done) {
+                    if (snapshot.hasData &&
+                        snapshot.data!.exists &&
+                        snapshot.data!.data() != null) {
+                      final data = snapshot.data!.data() as Map<String,
+                          dynamic>;
+                      adminName = data['name'] ?? 'User no longer exists';
+                    } else {
+                      adminName = 'User no longer exists';
+                    }
                   }
                   return AssignedVideoLayout(
                     videoTitle: videoTitle,

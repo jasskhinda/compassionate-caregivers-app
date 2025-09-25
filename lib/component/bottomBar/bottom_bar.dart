@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 
 import '../../utils/app_utils/AppUtils.dart';
-import '../../services/chat_services.dart';
 
 class BottomBar extends StatefulWidget {
   final void Function(int)? onTabChange;
@@ -20,7 +19,6 @@ class _BottomBarState extends State<BottomBar> {
   late int _currentIndex;
   bool _isAdmin = false;
   bool _isStaff = false;
-  final ChatServices _chatServices = ChatServices();
 
   @override
   void initState() {
@@ -76,7 +74,7 @@ class _BottomBarState extends State<BottomBar> {
     });
 
     final individualUnreadStream = FirebaseFirestore.instance
-        .collection('chats')
+        .collection('chat_rooms')
         .where('participants', arrayContains: currentUser.uid)
         .snapshots()
         .map((snapshot) {
@@ -167,18 +165,39 @@ class _BottomBarState extends State<BottomBar> {
 
                     // Calculate position for chat tab (second tab, index 1)
                     final screenWidth = MediaQuery.of(context).size.width;
-                    final tabWidth = (screenWidth - 30) / (_isAdmin || _isStaff ? 5 : 4);
-                    final chatTabPosition = tabWidth * 1.5; // Position for second tab
+                    final numberOfTabs = (_isAdmin || _isStaff) ? 5 : 4;
+                    final tabWidth = (screenWidth - 30) / numberOfTabs;
+
+                    // Position for chat icon (index 1)
+                    // Account for padding (15px left) and center on the icon
+                    final chatTabLeft = 15.0 + (tabWidth * 1) + (tabWidth / 2) - 20;
 
                     return Positioned(
-                      left: chatTabPosition + 15,
-                      top: 8,
+                      left: chatTabLeft,
+                      top: 4,
                       child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
+                        padding: const EdgeInsets.all(1),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
                           shape: BoxShape.circle,
+                        ),
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 9 ? '9+' : unreadCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     );

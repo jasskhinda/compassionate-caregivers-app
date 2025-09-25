@@ -392,12 +392,15 @@ class _ChatScreenState extends State<ChatScreen> {
     if (isGroupChat) {
       await _chatServices.resetGroupUnreadCount(groupId);
     } else {
-      // Create chat room ID from user IDs (sorted to ensure consistency)
-      List<String> ids = [FirebaseAuth.instance.currentUser!.uid, userID];
-      ids.sort();
-      String chatRoomId = ids.join('_');
-      await _chatServices.resetUnreadCount(chatRoomId);
+      // Mark individual chat messages as read
+      await _chatServices.markMessagesAsRead(userID);
     }
+  }
+
+  String _getChatRoomId() {
+    List<String> ids = [_auth.currentUser!.uid, userID];
+    ids.sort();
+    return ids.join('_');
   }
 
   @override
@@ -862,12 +865,45 @@ class _ChatScreenState extends State<ChatScreen> {
                 else
                   const Text('Unsupported message type'),
                 const SizedBox(height: 4),
-                Text(
-                  _formatTimestamp(message.timestamp),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isCurrentUser ? Colors.white70 : Colors.black54,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _formatTimestamp(message.timestamp),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isCurrentUser ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    if (isCurrentUser) ...[
+                      const SizedBox(width: 4),
+                      // Show read receipt for sender's messages
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('chat_rooms')
+                            .doc(_getChatRoomId())
+                            .collection('messages')
+                            .where('senderId', isEqualTo: message.senderId)
+                            .where('timestamp', isEqualTo: message.timestamp)
+                            .limit(1)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          bool isRead = false;
+                          if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                            final messageDoc = snapshot.data!.docs.first;
+                            final data = messageDoc.data() as Map<String, dynamic>?;
+                            isRead = data?['read'] ?? false;
+                          }
+
+                          return Icon(
+                            isRead ? Icons.done_all : Icons.done,
+                            size: 12,
+                            color: isRead ? Colors.blue : Colors.white70,
+                          );
+                        },
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

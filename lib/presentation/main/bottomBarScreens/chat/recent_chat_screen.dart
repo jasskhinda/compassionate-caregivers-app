@@ -166,84 +166,68 @@ class _RecentChatScreenState extends State<RecentChatScreen> {
       builder: (context, superAdminSnapshot) {
         final isSuperAdmin = superAdminSnapshot.data ?? false;
 
-        return StreamBuilder<QuerySnapshot>(
+        // Use the chat room document directly to get last message and unread count
+        return StreamBuilder<DocumentSnapshot>(
           stream: _firestore
-              .collection('chats')
+              .collection('chat_rooms')
               .doc(chatRoomId)
-              .collection('messages')
-              .orderBy('timestamp', descending: true)
-              .limit(1)
               .snapshots(),
-          builder: (context, messageSnapshot) {
+          builder: (context, chatRoomSnapshot) {
             String lastMessage = "Tap to start chatting";
             DateTime? lastMessageTime;
             int unreadCount = 0;
+            bool isLastMessageFromOther = false;
 
-            if (messageSnapshot.hasData && messageSnapshot.data!.docs.isNotEmpty) {
-              final lastMessageDoc = messageSnapshot.data!.docs.first;
-              final messageData = lastMessageDoc.data() as Map<String, dynamic>;
+            if (chatRoomSnapshot.hasData && chatRoomSnapshot.data!.exists) {
+              final chatRoomData = chatRoomSnapshot.data!.data() as Map<String, dynamic>;
 
-              // Format last message based on type
-              String messageType = messageData['messageType'] ?? 'text';
-              switch (messageType) {
-                case 'text':
-                  lastMessage = messageData['message'] ?? '';
-                  break;
-                case 'image':
-                  lastMessage = '📷 Image';
-                  break;
-                case 'video':
-                  lastMessage = '🎥 Video';
-                  break;
-                case 'audio':
-                  lastMessage = '🎵 Audio';
-                  break;
-                default:
-                  lastMessage = messageData['message'] ?? '';
+              // Get last message details
+              final lastMsg = chatRoomData['lastMessage'] as String?;
+              final lastMsgType = chatRoomData['lastMessageType'] as String? ?? 'text';
+              final lastSenderId = chatRoomData['lastSenderId'] as String?;
+              final lastMsgTime = chatRoomData['lastMessageTime'] as Timestamp?;
+
+              // Check if last message is from the other user
+              isLastMessageFromOther = lastSenderId != currentUserId && lastSenderId != null;
+
+              if (lastMsg != null && lastMsg.isNotEmpty) {
+                // Format last message based on type
+                switch (lastMsgType) {
+                  case 'text':
+                    lastMessage = lastMsg;
+                    break;
+                  case 'image':
+                    lastMessage = '📷 Photo';
+                    break;
+                  case 'video':
+                    lastMessage = '🎥 Video';
+                    break;
+                  case 'audio':
+                    lastMessage = '🎵 Voice message';
+                    break;
+                  default:
+                    lastMessage = lastMsg;
+                }
+
+                // Truncate long messages
+                if (lastMessage.length > 35) {
+                  lastMessage = '${lastMessage.substring(0, 35)}...';
+                }
+
+                lastMessageTime = lastMsgTime?.toDate();
               }
 
-              lastMessageTime = (messageData['timestamp'] as Timestamp?)?.toDate();
-
-              // Get unread count for this chat
-              return FutureBuilder<DocumentSnapshot>(
-                future: _firestore.collection('chats').doc(chatRoomId).get(),
-                builder: (context, chatSnapshot) {
-                  if (chatSnapshot.hasData && chatSnapshot.data!.exists) {
-                    final chatData = chatSnapshot.data!.data() as Map<String, dynamic>?;
-                    final fieldName = 'unreadCount_$currentUserId';
-                    unreadCount = chatData?[fieldName] ?? 0;
-                  }
-
-                  return ChatLayout(
-                    hasBadge: unreadCount > 0,
-                    badgeCount: unreadCount,
-                    backgroundColor: AppUtils.getColorScheme(context).secondary,
-                    title: userName,
-                    subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
-                    profileImageUrl: userData["profile_image_url"],
-                    lastMessage: lastMessage,
-                    lastMessageTime: lastMessageTime,
-                    onTap: () {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.chatScreen,
-                        arguments: {
-                          'userName': userName,
-                          'userEmail': userData["email"] ?? "",
-                          'userID': userData["uid"] ?? "",
-                          'isGroupChat': false,
-                        }
-                      );
-                    }
-                  );
-                },
-              );
+              // Get unread count
+              final fieldName = 'unreadCount_$currentUserId';
+              unreadCount = chatRoomData[fieldName] ?? 0;
             }
 
             return ChatLayout(
-              hasBadge: false,
-              badgeCount: 0,
-              backgroundColor: AppUtils.getColorScheme(context).secondary,
+              hasBadge: unreadCount > 0,
+              badgeCount: unreadCount,
+              backgroundColor: unreadCount > 0
+                  ? AppUtils.getColorScheme(context).secondary.withOpacity(0.8)
+                  : AppUtils.getColorScheme(context).secondary,
               title: userName,
               subtitle: isSuperAdmin ? "Super Admin - Contact for Technical Support" : null,
               profileImageUrl: userData["profile_image_url"],
