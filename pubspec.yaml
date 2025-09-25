@@ -66,6 +66,7 @@ dependencies:
   pdf: ^3.11.3
   device_info_plus: ^11.4.0
   flutter_sound: ^9.28.0
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

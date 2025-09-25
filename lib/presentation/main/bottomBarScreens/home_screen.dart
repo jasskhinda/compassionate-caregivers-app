@@ -111,6 +111,11 @@ class _HomeScreenState extends State<HomeScreen> {
         // Notify clock manager to refresh recent activity
         _notifyClockManagerRefresh();
 
+        // Start night shift monitoring
+        if (_shiftType == 'Night') {
+          _nightShiftService.startMonitoring(context);
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Successfully clocked in!'),

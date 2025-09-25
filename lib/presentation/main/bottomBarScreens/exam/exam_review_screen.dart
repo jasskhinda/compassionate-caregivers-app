@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 // Conditional import for web support
 import 'exam_review_screen_stub.dart'
@@ -158,42 +159,45 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   Future<void> downloadPdf() async {
     if (examData == null) return;
 
-    final pdf = await generatePdf();
-    final bytes = await pdf.save();
-    final fileName = 'ExamReport_${widget.examId}.pdf';
+    try {
+      final pdf = await generatePdf();
+      final bytes = await pdf.save();
+      final fileName = 'ExamReport_${widget.examId}.pdf';
 
-    if (kIsWeb) {
-      web_helper.downloadWebPdf(bytes, fileName);
-      return;
-    }
+      if (kIsWeb) {
+        web_helper.downloadWebPdf(bytes, fileName);
+        return;
+      }
 
-    if (io.Platform.isAndroid) {
-      // ✅ Scoped storage safe location
-      final downloadsDir = await getExternalStorageDirectory();
-      // This is: Android/data/<your.app.id>/files/
-      final file = io.File('${downloadsDir!.path}/$fileName');
+      // Save to temporary directory first
+      final tempDir = await getTemporaryDirectory();
+      final file = io.File('${tempDir.path}/$fileName');
       await file.writeAsBytes(bytes);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF saved to ${file.path}')),
+      // Use share dialog to let user save or share the PDF
+      final result = await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Exam Report',
+        text: 'Here is your exam report',
       );
 
-      return; // ✅ Stop here so iOS logic won't run
+      // Show success message if shared
+      if (result.status == ShareResultStatus.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PDF shared successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error generating PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-
-    // ✅ iOS or others: App Documents directory
-    final dir = await getApplicationDocumentsDirectory();
-    final file = io.File('${dir.path}/$fileName');
-    await file.writeAsBytes(bytes);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF saved to ${file.path}')),
-    );
-
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF saved to ${file.path}')),
-    );
   }
 
   @override
