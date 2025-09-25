@@ -307,7 +307,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                           value: selectedShiftType,
                           decoration: InputDecoration(
                             labelText: 'Shift Type',
-                            helperText: 'Night shift caregivers will be automatically clocked in between 8pm-1am',
+                            helperText: 'Please check your Manage & Add Users section to see all the activities',
                             helperMaxLines: 2,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),

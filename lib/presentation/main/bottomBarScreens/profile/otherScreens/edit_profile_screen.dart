@@ -240,8 +240,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'mobile_number': _mobileController.text.toString(),
             'dob': _dobController.text.toString(),
             'profile_image_url': newImageUrl,
-            // Only admins and staff can change shift type, not caregivers
-            if ((_role == 'Admin' || _role == 'Staff' || _role == 'Super Admin') && _shiftType != null) 'shift_type': _shiftType,
+            // Only store shift type for Caregivers
+            if (_role == 'Caregiver' && _shiftType != null) 'shift_type': _shiftType,
       }, SetOptions(merge: true));
 
       if (!mounted) return;
@@ -662,8 +662,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ),
 
-                        // Shift Type - only editable by Admin/Staff, not by Caregivers themselves
-                        if ((_role == 'Admin' || _role == 'Staff' || _role == 'Super Admin') && _shiftType != null) ...[
+                        // Shift Type - only for Caregivers (not editable by themselves)
+                        if (_role == 'Caregiver' && _shiftType != null) ...[
                           Text(
                             'Shift Type',
                             style: textTheme.titleMedium?.copyWith(
