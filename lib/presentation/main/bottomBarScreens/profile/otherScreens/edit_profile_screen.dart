@@ -676,7 +676,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             value: _shiftType ?? 'Day',
                             decoration: InputDecoration(
                               labelText: 'Shift Type',
-                              helperText: 'Night shift caregivers will be automatically clocked in between 8pm-1am',
+                              helperText: 'Night shift caregivers will receive periodic alerts to ensure attentiveness during shift hours',
                               helperMaxLines: 2,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
