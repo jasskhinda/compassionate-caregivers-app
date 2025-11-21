@@ -70,19 +70,10 @@ void main() async {
     
     // Initialize local notifications
     await NotificationService.init();
-    
-    // Initialize FCM - only on mobile platforms
-    if (!kIsWeb) {
-      try {
-        final notificationService = NotificationService();
-        await notificationService.initializeFCM();
-      } catch (e) {
-        debugPrint('Error initializing FCM: $e');
-      }
-    } else {
-      debugPrint('Skipping FCM initialization on web platform');
-    }
-    
+
+    // Note: FCM initialization is handled in native iOS AppDelegate
+    // and should be called after user login to save the token
+
     // Test Firestore connection
     await FirebaseService.testConnection();
     
