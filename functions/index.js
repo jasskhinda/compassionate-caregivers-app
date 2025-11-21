@@ -261,8 +261,6 @@ exports.sendChatNotification = functions.firestore
           notification: {
             title: senderName,
             body: notificationBody,
-            sound: 'default',
-            badge: '1',
           },
           data: {
             type: 'chat_message',
@@ -271,6 +269,14 @@ exports.sendChatNotification = functions.firestore
             senderName: senderName,
             messageType: messageType || 'text',
             click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+                badge: 1,
+              },
+            },
           },
           token: fcmToken,
         };
@@ -390,8 +396,6 @@ exports.sendGroupNotification = functions.firestore
             notification: {
               title: groupName,
               body: notificationBody,
-              sound: 'default',
-              badge: '1',
             },
             data: {
               type: 'group_message',
@@ -401,6 +405,14 @@ exports.sendGroupNotification = functions.firestore
               senderName: senderName,
               messageType: type || 'text',
               click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  badge: 1,
+                },
+              },
             },
             token: token,
           };
