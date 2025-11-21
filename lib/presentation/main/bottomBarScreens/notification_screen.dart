@@ -197,6 +197,35 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           }
                           break;
 
+                        case 'chat_message':
+                          if (context.mounted) {
+                            debugPrint("💬 Navigating to chat from: ${data['senderName']}");
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.chatScreen,
+                              arguments: {
+                                'receiverId': data['senderId'],
+                                'receiverEmail': data['senderName'],
+                              },
+                            );
+                          }
+                          break;
+
+                        case 'group_message':
+                          if (context.mounted) {
+                            debugPrint("👥 Navigating to group chat: ${data['groupName']}");
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.chatScreen,
+                              arguments: {
+                                'groupId': data['groupId'],
+                                'groupName': data['groupName'],
+                                'isGroup': true,
+                              },
+                            );
+                          }
+                          break;
+
                         default:
                           debugPrint("❓ Unknown notification type: ${data['type']}");
                           break;
@@ -313,6 +342,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return Icons.access_time;
       case 'attendance_update':
         return Icons.check_circle_outline;
+      case 'chat_message':
+        return Icons.chat_bubble;
+      case 'group_message':
+        return Icons.group;
       default:
         return Icons.notifications;
     }
