@@ -127,8 +127,8 @@ class _LoginUiState extends State<LoginUi> {
           await FirebaseFirestore.instance
               .collection('Users')
               .doc(user.uid)
-              .set({'fcmtoken': fcmToken}, SetOptions(merge: true));
-          debugPrint('✅ FCM token saved successfully');
+              .set({'fcmToken': fcmToken}, SetOptions(merge: true));
+          debugPrint('✅ FCM token saved successfully: $fcmToken');
         } else {
           debugPrint('⚠️ FCM token is null (normal on iOS simulator)');
         }
