@@ -74,8 +74,10 @@ void main() async {
     // Note: FCM initialization is handled in native iOS AppDelegate
     // and should be called after user login to save the token
 
-    // Test Firestore connection
-    await FirebaseService.testConnection();
+    // Test Firestore connection (non-blocking)
+    FirebaseService.testConnection().then((success) {
+      debugPrint('Firestore connection test: ${success ? "✅ Success" : "❌ Failed"}');
+    });
     
     // Start authentication debugging for web
     if (kIsWeb) {
