@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:caregiver/component/other/show_still_watching_dialog.dart';
-import 'package:youtube_player_iframe/youtube_player_iframe.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../services/user_video_services.dart';
@@ -44,50 +45,48 @@ class _VideoScreenState extends State<VideoScreen> {
   void _togglePlayPause() {
     setState(() {
       if (isPlaying) {
-        _controller.pauseVideo();
+        _controller.pause();
         _stillWatchingTimer?.cancel(); // Stop timer when video is paused
       } else {
-        _controller.playVideo();
+        _controller.play();
         _startStillWatchingTimer(); // Start timer when play is pressed
       }
       isPlaying = !isPlaying;
     });
   }
   void _toggleFullScreen() {
-    isFullScreen = !isFullScreen;
+    _controller.toggleFullScreenMode();
   }
 
   void _startStillWatchingTimer() {
     if (_hasAskedStillWatching || _stillWatchingTimer != null) return;
 
     // Professional adaptive timing based on video duration
-    _controller.duration.then((duration) {
-      int delaySeconds;
-      if (duration <= 30) {
-        // Very short videos: 8-12 seconds
-        delaySeconds = 8 + (DateTime.now().millisecondsSinceEpoch % 5);
-      } else if (duration <= 120) {
-        // Short videos (up to 2 mins): 15-25 seconds
-        delaySeconds = 15 + (DateTime.now().millisecondsSinceEpoch % 11);
-      } else if (duration <= 300) {
-        // Medium videos (up to 5 mins): 25-35 seconds
-        delaySeconds = 25 + (DateTime.now().millisecondsSinceEpoch % 11);
-      } else {
-        // Long videos: 30-45 seconds
-        delaySeconds = 30 + (DateTime.now().millisecondsSinceEpoch % 16);
-      }
+    final duration = _controller.metadata.duration.inSeconds;
+    int delaySeconds;
+    if (duration <= 30) {
+      // Very short videos: 8-12 seconds
+      delaySeconds = 8 + (DateTime.now().millisecondsSinceEpoch % 5);
+    } else if (duration <= 120) {
+      // Short videos (up to 2 mins): 15-25 seconds
+      delaySeconds = 15 + (DateTime.now().millisecondsSinceEpoch % 11);
+    } else if (duration <= 300) {
+      // Medium videos (up to 5 mins): 25-35 seconds
+      delaySeconds = 25 + (DateTime.now().millisecondsSinceEpoch % 11);
+    } else {
+      // Long videos: 30-45 seconds
+      delaySeconds = 30 + (DateTime.now().millisecondsSinceEpoch % 16);
+    }
 
-      _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
-      final playerState = await _controller.playerState;
-
-      if (playerState == PlayerState.playing) {
-        _controller.pauseVideo();
+    _stillWatchingTimer = Timer(Duration(seconds: delaySeconds), () async {
+      if (_controller.value.isPlaying) {
+        _controller.pause();
         isPlaying = false;
         setState(() {}); // Update play/pause button UI
 
         final result = await showStillWatchingDialog(context);
         if (result == true) {
-          _controller.playVideo();
+          _controller.play();
           isPlaying = true;
         } else {
           // Explicitly keep it paused
@@ -98,7 +97,6 @@ class _VideoScreenState extends State<VideoScreen> {
 
       _hasAskedStillWatching = true; // Only ask once
       _stillWatchingTimer = null;
-      });
     });
   }
   // Future<void> rewind() async {
@@ -191,38 +189,76 @@ class _VideoScreenState extends State<VideoScreen> {
     }
   }
 
+  String? _extractYoutubeId(String url) {
+    // Handle various YouTube URL formats
+    final regexPatterns = [
+      RegExp(r'youtu\.be\/([a-zA-Z0-9_-]{11})'),  // youtu.be/VIDEO_ID or youtu.be/VIDEO_ID?params
+      RegExp(r'youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})'),  // youtube.com/watch?v=VIDEO_ID
+      RegExp(r'youtube\.com\/embed\/([a-zA-Z0-9_-]{11})'),  // youtube.com/embed/VIDEO_ID
+      RegExp(r'youtube\.com\/v\/([a-zA-Z0-9_-]{11})'),  // youtube.com/v/VIDEO_ID
+    ];
+
+    for (final pattern in regexPatterns) {
+      final match = pattern.firstMatch(url);
+      if (match != null && match.groupCount >= 1) {
+        final videoId = match.group(1);
+        debugPrint("Regex matched! Extracted ID: $videoId from URL: $url");
+        return videoId;
+      }
+    }
+
+    // If no pattern matches, assume it's already a video ID (11 characters)
+    if (!url.contains('/') && !url.contains('?') && url.length == 11) {
+      debugPrint("URL appears to be a video ID already: $url");
+      return url;
+    }
+
+    debugPrint("Failed to extract video ID from: $url");
+    return null;
+  }
+
   void _initializePlayer() {
     _hasAskedStillWatching = false;
     _stillWatchingTimer?.cancel();
     if (videoUrl == null || videoUrl!.isEmpty) return;
 
-    _controller = YoutubePlayerController(
-      params: const YoutubePlayerParams(
-        mute: false,                     // Keep sound on
-        showControls: false,             // Hides play/pause, volume, etc.
-        showFullscreenButton: false,     // Disables fullscreen button
-        showVideoAnnotations: false,     // Disables video annotations
-        pointerEvents: PointerEvents.none, // Disables all interaction
-        loop: false,                     // No loop
-        playsInline: true,               // Plays inline, not fullscreen
-        strictRelatedVideos: true,      // Reduces related videos showing after playback
-        enableJavaScript: false,         // Disables JavaScript interaction
-        enableCaption: false,            // Disables captions
-        captionLanguage: 'en',           // Set caption language (if enabled)
-      ),
-    )..loadVideoById(videoId: videoUrl!);
+    // Extract YouTube video ID from URL
+    final extractedId = _extractYoutubeId(videoUrl!);
+    if (extractedId == null) {
+      debugPrint("Failed to extract YouTube video ID from: $videoUrl");
+      return;
+    }
+
+    debugPrint("Extracted YouTube ID: $extractedId from URL: $videoUrl");
+
+    try {
+      _controller = YoutubePlayerController(
+        initialVideoId: extractedId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: true,
+          mute: false,
+          controlsVisibleAtStart: true,
+          hideControls: false,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error initializing YouTube player: $e");
+      return;
+    }
 
     _startStillWatchingTimer();
 
     // Track progress every second
-    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final duration = await _controller.duration;
-      final currentPosition = await _controller.currentTime;
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_controller.value.isReady) {
+        final duration = _controller.metadata.duration.inSeconds.toDouble();
+        final currentPosition = _controller.value.position.inSeconds.toDouble();
 
-      if (duration > 0) {
-        double percent = (currentPosition / duration) * 100;
-        watchedPercentage = percent.clamp(0, 100);
-        setState(() {});
+        if (duration > 0) {
+          double percent = (currentPosition / duration) * 100;
+          watchedPercentage = percent.clamp(0, 100);
+          setState(() {});
+        }
       }
     });
 
@@ -289,11 +325,7 @@ class _VideoScreenState extends State<VideoScreen> {
     _progressTimer?.cancel();
     _updateTimer?.cancel();
     _stillWatchingTimer?.cancel();
-    try {
-      _controller.close();
-    } catch (e) {
-      debugPrint('Error closing controller: $e');
-    }
+    _controller.dispose();
     super.dispose();
   }
 
@@ -381,22 +413,31 @@ class _VideoScreenState extends State<VideoScreen> {
   }
 
   Widget _buildVideoPlayer() {
-    return SizedBox(
-      height: AppUtils.getScreenSize(context).width >= 600
-          ? isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : 350
-          : isFullScreen ? AppUtils.getScreenSize(context).height * 0.8 : 250,
-      width: AppUtils.getScreenSize(context).width >= 600
-          ? isFullScreen ? double.infinity : AppUtils.getScreenSize(context).width * 0.45
-          : double.infinity,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
       child: _isPlayerReady
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: Transform.rotate(
-                  angle: AppUtils.getScreenSize(context).width <= 600 ? isFullScreen ? 90 * 3.14159 / 180 : 0 : 0,  // Rotate to 90 degrees when fullscreen
-                  child: YoutubePlayer(controller: _controller,),
-                ),
-          )
-          : const Center(child: CircularProgressIndicator()),
+          ? YoutubePlayer(
+              controller: _controller,
+              showVideoProgressIndicator: true,
+              progressIndicatorColor: AppUtils.getColorScheme(context).primary,
+              progressColors: ProgressBarColors(
+                playedColor: AppUtils.getColorScheme(context).primary,
+                handleColor: AppUtils.getColorScheme(context).primary,
+              ),
+              aspectRatio: 16 / 9,
+            )
+          : videoUrl != null && videoUrl!.isNotEmpty && _extractYoutubeId(videoUrl!) == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      'Invalid YouTube URL format.\nPlease use format like:\nhttps://youtu.be/VIDEO_ID\nor\nhttps://youtube.com/watch?v=VIDEO_ID',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                )
+              : const Center(child: CircularProgressIndicator()),
     );
   }
 

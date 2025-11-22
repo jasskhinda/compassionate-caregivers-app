@@ -4,6 +4,39 @@ const admin = require('firebase-admin');
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 
+// OneSignal Configuration
+const ONESIGNAL_APP_ID = '39bdbb79-5651-45e0-a7ef-52505feb88ca';
+const ONESIGNAL_REST_API_KEY = 'os_v2_app_hg63w6kwkfc6bj7pkjif724iziuaw' +
+  'mgletwum2eugpue6wuebtxsdkc6mlmpzkarsjzztm3ephvr2cgzhef5aqoqytge' +
+  'lyxhf26j44q';
+
+/**
+ * Helper function to send notification via OneSignal REST API
+ * @param {string} playerId - OneSignal Player ID
+ * @param {string} title - Notification title
+ * @param {string} body - Notification body
+ * @param {object} data - Additional data payload
+ * @return {Promise} OneSignal API response
+ */
+async function sendOneSignalNotification(playerId, title, body, data) {
+  const response = await fetch('https://api.onesignal.com/notifications', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Key ${ONESIGNAL_REST_API_KEY}`,
+    },
+    body: JSON.stringify({
+      app_id: ONESIGNAL_APP_ID,
+      include_player_ids: [playerId],
+      headings: {en: title},
+      contents: {en: body},
+      data: data,
+    }),
+  });
+
+  return await response.json();
+}
+
 /**
  * Cloud Function to delete a user from both Firebase Auth and Firestore
  * This function can only be called by authenticated Admin users
@@ -184,6 +217,7 @@ exports.syncUserCounts = functions.https.onCall(async (data, context) => {
 /**
  * Cloud Function to send push notification when a new chat message is created
  * Triggers on new document creation in chat_rooms/{chatRoomId}/messages
+ * Uses OneSignal REST API for reliable cross-platform notifications
  */
 exports.sendChatNotification = functions.firestore
     .document('chat_rooms/{chatRoomId}/messages/{messageId}')
@@ -227,7 +261,7 @@ exports.sendChatNotification = functions.firestore
         const senderName = senderDoc.exists ?
             senderDoc.data().name || senderEmail : senderEmail;
 
-        // Get receiver's FCM token
+        // Get receiver's OneSignal Player ID
         const receiverDoc = await admin.firestore()
             .collection('Users')
             .doc(receiverId)
@@ -239,10 +273,10 @@ exports.sendChatNotification = functions.firestore
         }
 
         const receiverData = receiverDoc.data();
-        const fcmToken = receiverData.fcmToken;
+        const oneSignalPlayerId = receiverData.oneSignalPlayerId;
 
-        if (!fcmToken) {
-          console.log(`⚠️ Receiver ${receiverId} has no FCM token`);
+        if (!oneSignalPlayerId) {
+          console.log(`⚠️ Receiver ${receiverId} has no OneSignal Player ID`);
           return null;
         }
 
@@ -256,34 +290,22 @@ exports.sendChatNotification = functions.firestore
           notificationBody = '🎤 Sent an audio message';
         }
 
-        // Create notification payload
-        const payload = {
-          notification: {
-            title: senderName,
-            body: notificationBody,
-          },
-          data: {
-            type: 'chat_message',
-            chatRoomId: chatRoomId,
-            senderId: senderId,
-            senderName: senderName,
-            messageType: messageType || 'text',
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          },
-          apns: {
-            payload: {
-              aps: {
-                sound: 'default',
-                badge: 1,
-              },
+        // Send notification via OneSignal
+        const oneSignalResult = await sendOneSignalNotification(
+            oneSignalPlayerId,
+            senderName,
+            notificationBody,
+            {
+              type: 'chat_message',
+              chatRoomId: chatRoomId,
+              senderId: senderId,
+              senderName: senderName,
+              messageType: messageType || 'text',
             },
-          },
-          token: fcmToken,
-        };
+        );
 
-        // Send notification
-        const response = await admin.messaging().send(payload);
-        console.log(`✅ Notification sent successfully: ${response}`);
+        console.log(`✅ OneSignal notification sent: ${JSON.stringify(
+            oneSignalResult)}`);
 
         // Store notification in receiver's notifications collection
         await admin.firestore()
@@ -305,7 +327,7 @@ exports.sendChatNotification = functions.firestore
 
         console.log(`✅ Notification document created for user ${receiverId}`);
 
-        return response;
+        return oneSignalResult;
       } catch (error) {
         console.error('❌ Error sending chat notification:', error);
         return null;
@@ -315,6 +337,7 @@ exports.sendChatNotification = functions.firestore
 /**
  * Cloud Function to send push notification when a new group message is created
  * Triggers on new document creation in groups/{groupId}/messages
+ * Uses OneSignal REST API for reliable cross-platform notifications
  */
 exports.sendGroupNotification = functions.firestore
     .document('groups/{groupId}/messages/{messageId}')
@@ -360,8 +383,8 @@ exports.sendGroupNotification = functions.firestore
           notificationBody = `${senderName} sent an audio message`;
         }
 
-        // Get FCM tokens for all members except the sender
-        const memberTokens = [];
+        // Get OneSignal Player IDs for all members except the sender
+        const memberPlayerIds = [];
         const notificationPromises = [];
 
         for (const memberId of members) {
@@ -375,54 +398,41 @@ exports.sendGroupNotification = functions.firestore
           if (!memberDoc.exists) continue;
 
           const memberData = memberDoc.data();
-          const fcmToken = memberData.fcmToken;
+          const oneSignalPlayerId = memberData.oneSignalPlayerId;
 
-          if (fcmToken) {
-            memberTokens.push({
-              token: fcmToken,
+          if (oneSignalPlayerId) {
+            memberPlayerIds.push({
+              playerId: oneSignalPlayerId,
               userId: memberId,
             });
           }
         }
 
-        if (memberTokens.length === 0) {
-          console.log('⚠️ No members with FCM tokens to notify');
+        if (memberPlayerIds.length === 0) {
+          console.log('⚠️ No members with OneSignal Player IDs to notify');
           return null;
         }
 
         // Send notifications to all members
-        for (const {token, userId} of memberTokens) {
-          const payload = {
-            notification: {
-              title: groupName,
-              body: notificationBody,
-            },
-            data: {
-              type: 'group_message',
-              groupId: groupId,
-              groupName: groupName,
-              senderId: senderId,
-              senderName: senderName,
-              messageType: type || 'text',
-              click_action: 'FLUTTER_NOTIFICATION_CLICK',
-            },
-            apns: {
-              payload: {
-                aps: {
-                  sound: 'default',
-                  badge: 1,
-                },
+        for (const {playerId, userId} of memberPlayerIds) {
+          const notificationPromise = sendOneSignalNotification(
+              playerId,
+              groupName,
+              notificationBody,
+              {
+                type: 'group_message',
+                groupId: groupId,
+                groupName: groupName,
+                senderId: senderId,
+                senderName: senderName,
+                messageType: type || 'text',
               },
-            },
-            token: token,
-          };
-
-          // Send notification
-          const notificationPromise = admin.messaging().send(payload)
-              .then((response) => {
+          )
+              .then((result) => {
                 console.log(
-                    `✅ Notification sent to user ${userId}: ${response}`);
-                return response;
+                    `✅ Notification sent to user ${userId}: ${
+                      JSON.stringify(result)}`);
+                return result;
               })
               .catch((error) => {
                 console.error(

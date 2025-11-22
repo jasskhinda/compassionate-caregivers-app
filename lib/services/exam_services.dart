@@ -83,9 +83,9 @@ class ExamService {
           print("Exam deleted for user: $userId"); // Log after deletion
 
           // 3. Optionally: Remove the examId from user's assignedExamIds array
-          await firestore.collection('Users').doc(userId).update({
+          await firestore.collection('Users').doc(userId).set({
             'assignedExamIds': FieldValue.arrayRemove([examId]),
-          });
+          }, SetOptions(merge: true));
 
           print("Exam removed from assignedExamIds for user: $userId"); // Log after updating the user's assignedExamIds array
         } catch (e) {
@@ -124,9 +124,9 @@ class ExamService {
       });
 
       // 3. Store exam ID in user's main doc for quick reference
-      await firestore.collection('Users').doc(userId).update({
+      await firestore.collection('Users').doc(userId).set({
         'assignedExamIds': FieldValue.arrayUnion([examId])
-      });
+      }, SetOptions(merge: true));
 
       // 4. Copy full exam into user's personal exams collection
       final userExamRef = firestore

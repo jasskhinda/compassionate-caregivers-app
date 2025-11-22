@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:caregiver/component/other/alert_dialog.dart';
 import 'package:caregiver/presentation/auth/forgot_password.dart';
 import 'package:caregiver/services/user_document_service.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../../../component/other/basic_button.dart';
 import '../../../component/other/input_text_fields/input_text_field.dart';
 import '../../../component/other/input_text_fields/password_text_field.dart';
@@ -120,21 +121,42 @@ class _LoginUiState extends State<LoginUi> {
         debugPrint('✅ Login: User document created successfully');
       }
 
-      // Save FCM token (handle iOS simulator issue)
+      // Save OneSignal Player ID and FCM token
       try {
+        // Get OneSignal Player ID (Subscription ID)
+        final playerId = OneSignal.User.pushSubscription.id;
+
+        // Get FCM token (backup)
         final fcmToken = await FirebaseMessaging.instance.getToken();
+
+        // Prepare update data
+        Map<String, dynamic> updateData = {};
+
+        if (playerId != null) {
+          updateData['oneSignalPlayerId'] = playerId;
+          debugPrint('✅ OneSignal Player ID: $playerId');
+        } else {
+          debugPrint('⚠️ OneSignal Player ID is null');
+        }
+
         if (fcmToken != null) {
-          await FirebaseFirestore.instance
-              .collection('Users')
-              .doc(user.uid)
-              .set({'fcmToken': fcmToken}, SetOptions(merge: true));
-          debugPrint('✅ FCM token saved successfully: $fcmToken');
+          updateData['fcmToken'] = fcmToken;
+          debugPrint('✅ FCM token: $fcmToken');
         } else {
           debugPrint('⚠️ FCM token is null (normal on iOS simulator)');
         }
+
+        // Save to Firestore
+        if (updateData.isNotEmpty) {
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(user.uid)
+              .set(updateData, SetOptions(merge: true));
+          debugPrint('✅ Notification tokens saved successfully');
+        }
       } catch (e) {
-        debugPrint('⚠️ Could not get FCM token (normal on iOS simulator): $e');
-        // Continue without FCM token - it's not critical for login
+        debugPrint('⚠️ Could not save notification tokens: $e');
+        // Continue without tokens - it's not critical for login
       }
 
       // Check if user is a night shift caregiver and auto clock-in if within time window

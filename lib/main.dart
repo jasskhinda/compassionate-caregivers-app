@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:caregiver/services/auth_debug_service.dart';
 import 'package:caregiver/presentation/auth/forgot_password.dart';
 import 'package:caregiver/presentation/auth/login/login_screen.dart';
@@ -64,10 +65,24 @@ void main() async {
     
     // Initialize Firestore settings
     await FirebaseService.initializeFirestore();
-    
+
+    // Initialize OneSignal
+    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+    OneSignal.initialize("39bdbb79-5651-45e0-a7ef-52505feb88ca");
+
+    // Request notification permission
+    OneSignal.Notifications.requestPermission(true);
+
+    // Set up notification click handler
+    OneSignal.Notifications.addClickListener((event) {
+      debugPrint('OneSignal notification clicked: ${event.notification.additionalData}');
+    });
+
+    debugPrint('OneSignal initialized successfully');
+
     // Set the background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    
+
     // Initialize local notifications
     await NotificationService.init();
 
