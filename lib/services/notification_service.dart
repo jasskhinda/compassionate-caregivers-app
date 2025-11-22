@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -131,15 +132,45 @@ class NotificationService {
           'timestamp': FieldValue.serverTimestamp(),
           'read': false,
         });
+
+        // Update badge count for this user
+        await _updateBadgeCountForUser(userId);
       }
 
       // If you want to send actual push notifications, you would need a server-side component
       // This is because FCM requires a server to send notifications
       // For now, we're just storing the notification in Firestore
-      
+
       debugPrint('Notifications stored for ${userIds.length} users');
     } catch (e) {
       debugPrint('Error sending notifications: $e');
+    }
+  }
+
+  // Update badge count for a specific user
+  Future<void> _updateBadgeCountForUser(String userId) async {
+    try {
+      // Only update badge if this is the current user
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && currentUser.uid == userId) {
+        final unreadSnapshot = await _firestore
+            .collection('Users')
+            .doc(userId)
+            .collection('notifications')
+            .where('read', isEqualTo: false)
+            .get();
+
+        final unreadCount = unreadSnapshot.docs.length;
+
+        if (unreadCount > 0) {
+          FlutterAppBadger.updateBadgeCount(unreadCount);
+        } else {
+          FlutterAppBadger.removeBadge();
+        }
+        debugPrint('Badge count updated: $unreadCount');
+      }
+    } catch (e) {
+      debugPrint('Error updating badge count: $e');
     }
   }
 

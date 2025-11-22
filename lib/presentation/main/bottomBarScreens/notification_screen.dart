@@ -5,6 +5,7 @@ import 'package:caregiver/component/appBar/settings_app_bar.dart';
 import 'package:caregiver/utils/app_utils/AppUtils.dart';
 import 'package:caregiver/utils/appRoutes/app_routes.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -22,6 +23,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
     setState(() {
       _readNotifications.clear();
     });
+  }
+
+  Future<void> _updateBadgeCount() async {
+    try {
+      final unreadSnapshot = await _firestore
+          .collection('Users')
+          .doc(_auth.currentUser!.uid)
+          .collection('notifications')
+          .where('read', isEqualTo: false)
+          .get();
+
+      final unreadCount = unreadSnapshot.docs.length;
+
+      if (unreadCount > 0) {
+        FlutterAppBadger.updateBadgeCount(unreadCount);
+      } else {
+        FlutterAppBadger.removeBadge();
+      }
+    } catch (e) {
+      debugPrint('Error updating badge count: $e');
+    }
   }
 
   @override
@@ -131,13 +153,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     setState(() {
                       _readNotifications.add(documentId);
                     });
-                    
+
                     await _firestore
                         .collection('Users')
                         .doc(_auth.currentUser!.uid)
                         .collection('notifications')
                         .doc(documentId)
                         .update({'read': true});
+
+                    // Update badge count after marking as read
+                    await _updateBadgeCount();
 
                     // Handle notification tap based on type
                     if (data != null) {
@@ -175,7 +200,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             debugPrint("📝 Navigating to assigned exam: ${data['examTitle']}");
                             Navigator.pushNamed(
                               context,
-                              AppRoutes.examScreen,
+                              AppRoutes.takeExamScreen,
                               arguments: {
                                 'examId': data['examId'],
                                 'examTitle': data['examTitle'],
