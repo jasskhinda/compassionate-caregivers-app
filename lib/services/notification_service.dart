@@ -175,7 +175,7 @@ class NotificationService {
   }
 
   // Show local notification when app is in foreground
-  void _showLocalNotification(RemoteMessage message) {
+  void _showLocalNotification(RemoteMessage message) async {
     try {
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
@@ -190,6 +190,23 @@ class NotificationService {
               .join('|');
         }
 
+        // Get current unread count for badge
+        int badgeCount = 0;
+        try {
+          final currentUser = FirebaseAuth.instance.currentUser;
+          if (currentUser != null) {
+            final unreadSnapshot = await _firestore
+                .collection('Users')
+                .doc(currentUser.uid)
+                .collection('notifications')
+                .where('read', isEqualTo: false)
+                .get();
+            badgeCount = unreadSnapshot.docs.length + 1; // +1 for this new notification
+          }
+        } catch (e) {
+          debugPrint('Error getting badge count: $e');
+        }
+
         _localNotifications.show(
           notification.hashCode,
           notification.title,
@@ -201,12 +218,21 @@ class NotificationService {
               importance: Importance.max,
               priority: Priority.high,
               icon: '@mipmap/ic_launcher',
+              number: badgeCount, // Set badge count for Android
             ),
-            iOS: const DarwinNotificationDetails(),
+            iOS: DarwinNotificationDetails(
+              badgeNumber: badgeCount, // Set badge count for iOS
+            ),
           ),
           payload: payload,
         );
-        debugPrint('Local notification shown: ${notification.title}');
+
+        // Update app badge count
+        if (badgeCount > 0) {
+          FlutterAppBadger.updateBadgeCount(badgeCount);
+        }
+
+        debugPrint('Local notification shown: ${notification.title} with badge: $badgeCount');
       }
     } catch (e) {
       debugPrint('Error showing local notification: $e');
