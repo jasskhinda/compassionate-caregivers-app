@@ -12,6 +12,8 @@ import '../../component/bottomBar/nav_drawer.dart';
 import '../../services/night_shift_monitoring_service.dart';
 import '../../services/clock_management_service.dart';
 import 'bottomBarScreens/home_screen.dart';
+import 'package:flutter_app_badger/flutter_app_badger.dart';
+import 'dart:async';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -30,6 +32,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isAdmin = false;
   bool _isStaff = false;
   bool _isCaregiver = false;
+  StreamSubscription<QuerySnapshot>? _notificationSubscription;
 
   // Update the selected index
   void _updateSelectedIndex(int index) {
@@ -87,10 +90,55 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  // Update badge count based on unread notifications
+  Future<void> _updateBadgeCount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final unreadSnapshot = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .collection('notifications')
+            .where('read', isEqualTo: false)
+            .get();
+
+        final unreadCount = unreadSnapshot.docs.length;
+
+        if (unreadCount > 0) {
+          FlutterAppBadger.updateBadgeCount(unreadCount);
+        } else {
+          FlutterAppBadger.removeBadge();
+        }
+        debugPrint('Badge count updated: $unreadCount');
+      }
+    } catch (e) {
+      debugPrint('Error updating badge count: $e');
+    }
+  }
+
+  // Setup real-time listener for notification changes
+  void _setupNotificationListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _notificationSubscription = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .collection('notifications')
+          .where('read', isEqualTo: false)
+          .snapshots()
+          .listen((snapshot) {
+            _updateBadgeCount();
+          });
+      debugPrint('Notification listener setup for badge updates');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _checkUserRole();
+    _updateBadgeCount(); // Update badge on app launch
+    _setupNotificationListener(); // Listen for new notifications
     // Note: Auto clock-in removed - will be handled via Wellsky API integration
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Start night shift monitoring if applicable (only if user is already clocked in)
@@ -100,6 +148,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
+    _notificationSubscription?.cancel();
     // Don't stop monitoring on dispose - let it continue in background
     // Only stop when user logs out
     // _nightShiftService.stopMonitoring();

@@ -474,3 +474,117 @@ exports.sendGroupNotification = functions.firestore
         return null;
       }
     });
+
+/**
+ * Cloud Function to send push notification when a video is assigned
+ * Triggers on document write in caregiver_videos/{userId}/videos
+ * Uses OneSignal REST API for reliable cross-platform notifications
+ */
+exports.sendVideoAssignmentNotification = functions.firestore
+    .document('caregiver_videos/{userId}/videos/{videoId}')
+    .onCreate(async (snap, context) => {
+      try {
+        const videoData = snap.data();
+        const {title} = videoData;
+        const userId = context.params.userId;
+        const videoId = context.params.videoId;
+
+        console.log(`📺 Video "${title}" assigned to user ${userId}`);
+
+        // Get user's OneSignal Player ID
+        const userDoc = await admin.firestore()
+            .collection('Users')
+            .doc(userId)
+            .get();
+
+        if (!userDoc.exists) {
+          console.log(`⚠️ User ${userId} document does not exist`);
+          return null;
+        }
+
+        const userData = userDoc.data();
+        const oneSignalPlayerId = userData.oneSignalPlayerId;
+
+        if (!oneSignalPlayerId) {
+          console.log(`⚠️ User ${userId} has no OneSignal Player ID`);
+          return null;
+        }
+
+        // Send notification via OneSignal
+        const oneSignalResult = await sendOneSignalNotification(
+            oneSignalPlayerId,
+            'New Video Assigned',
+            `A new video "${title}" has been assigned to you.`,
+            {
+              type: 'video_assigned',
+              videoId: videoId,
+              videoTitle: title,
+            },
+        );
+
+        console.log(`✅ OneSignal video notification sent: ${JSON.stringify(
+            oneSignalResult)}`);
+
+        return oneSignalResult;
+      } catch (error) {
+        console.error('❌ Error sending video assignment notification:', error);
+        return null;
+      }
+    });
+
+/**
+ * Cloud Function to send push notification when an exam is assigned
+ * Triggers on document write in Users/{userId}/exams
+ * Uses OneSignal REST API for reliable cross-platform notifications
+ */
+exports.sendExamAssignmentNotification = functions.firestore
+    .document('Users/{userId}/exams/{examId}')
+    .onCreate(async (snap, context) => {
+      try {
+        const examData = snap.data();
+        const {examTitle} = examData;
+        const userId = context.params.userId;
+        const examId = context.params.examId;
+
+        console.log(`📝 Exam "${examTitle}" assigned to user ${userId}`);
+
+        // Get user's OneSignal Player ID
+        const userDoc = await admin.firestore()
+            .collection('Users')
+            .doc(userId)
+            .get();
+
+        if (!userDoc.exists) {
+          console.log(`⚠️ User ${userId} document does not exist`);
+          return null;
+        }
+
+        const userData = userDoc.data();
+        const oneSignalPlayerId = userData.oneSignalPlayerId;
+
+        if (!oneSignalPlayerId) {
+          console.log(`⚠️ User ${userId} has no OneSignal Player ID`);
+          return null;
+        }
+
+        // Send notification via OneSignal
+        const oneSignalResult = await sendOneSignalNotification(
+            oneSignalPlayerId,
+            'New Exam Assigned',
+            `A new exam "${examTitle}" has been assigned to you.`,
+            {
+              type: 'exam_assigned',
+              examId: examId,
+              examTitle: examTitle,
+            },
+        );
+
+        console.log(`✅ OneSignal exam notification sent: ${JSON.stringify(
+            oneSignalResult)}`);
+
+        return oneSignalResult;
+      } catch (error) {
+        console.error('❌ Error sending exam assignment notification:', error);
+        return null;
+      }
+    });
