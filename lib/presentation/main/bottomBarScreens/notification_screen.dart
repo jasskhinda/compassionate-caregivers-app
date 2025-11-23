@@ -19,10 +19,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   Set<String> _readNotifications = {};
 
+  @override
+  void initState() {
+    super.initState();
+    // Update badge count when screen opens
+    Future.microtask(() => _updateBadgeCount());
+  }
+
   Future<void> _refreshNotifications() async {
     setState(() {
       _readNotifications.clear();
     });
+    await _updateBadgeCount();
   }
 
   Future<void> _updateBadgeCount() async {
@@ -149,6 +157,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ),
               child: InkWell(
                 onTap: () async {
+                  // Mark as read if unread
                   if (!read) {
                     setState(() {
                       _readNotifications.add(documentId);
@@ -163,12 +172,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
                     // Update badge count after marking as read
                     await _updateBadgeCount();
+                  }
 
-                    // Handle notification tap based on type
-                    if (data != null) {
-                      debugPrint("🔗 Notification tapped with type: ${data['type']}");
+                  // Handle notification tap based on type (works for both read and unread)
+                  if (data != null) {
+                    debugPrint("🔗 Notification tapped with type: ${data['type']}");
 
-                      switch (data['type']) {
+                    switch (data['type']) {
                         case 'video_assigned':
                           if (context.mounted) {
                             debugPrint("📺 Navigating to assigned video: ${data['videoTitle']}");
@@ -255,9 +265,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           debugPrint("❓ Unknown notification type: ${data['type']}");
                           break;
                       }
-                    } else {
-                      debugPrint("ℹ️ Notification tapped but no data available for deep linking");
-                    }
+                  } else {
+                    debugPrint("ℹ️ Notification tapped but no data available for deep linking");
                   }
                 },
                 child: Padding(
