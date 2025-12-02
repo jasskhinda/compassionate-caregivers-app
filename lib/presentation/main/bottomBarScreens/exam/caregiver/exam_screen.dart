@@ -291,70 +291,82 @@ class _ExamScreenState extends State<ExamScreen> {
     }).length;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.grey.shade100,
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         slivers: [
           // PROFESSIONAL EXAM HEADER
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 160,
             floating: false,
             pinned: true,
-            backgroundColor: AppUtils.getColorScheme(context).primary,
+            backgroundColor: const Color(0xFF69c8cc),
+            surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppUtils.getColorScheme(context).primary,
-                      AppUtils.getColorScheme(context).primary.withOpacity(0.8),
+                      Color(0xFF69c8cc),
+                      Color(0xFF4db5ba),
                     ],
                   ),
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         // Exam Title
                         Text(
                           examData?['examTitle'] ?? 'Professional Assessment',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 24,
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
 
                         // Progress and Timer Row
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             // Progress
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                'Progress: $answeredQuestions / $totalQuestions',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'Progress: $answeredQuestions / $totalQuestions',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ),
 
+                            const SizedBox(width: 8),
+
                             // Timer
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade100,
                                 borderRadius: BorderRadius.circular(20),
@@ -365,7 +377,7 @@ class _ExamScreenState extends State<ExamScreen> {
                                   Icon(
                                     Icons.timer,
                                     color: Colors.red.shade700,
-                                    size: 16,
+                                    size: 14,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -373,7 +385,7 @@ class _ExamScreenState extends State<ExamScreen> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.red.shade700,
-                                      fontSize: 14,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
@@ -385,21 +397,13 @@ class _ExamScreenState extends State<ExamScreen> {
                         const SizedBox(height: 12),
 
                         // Progress Bar
-                        Container(
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerLeft,
-                            widthFactor: totalQuestions > 0 ? answeredQuestions / totalQuestions : 0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: totalQuestions > 0 ? answeredQuestions / totalQuestions : 0,
+                            backgroundColor: Colors.white.withOpacity(0.3),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                            minHeight: 6,
                           ),
                         ),
                       ],
@@ -457,81 +461,97 @@ class _ExamScreenState extends State<ExamScreen> {
                                     }
                                     overallQuestionNumber += qIndex;
 
-                                    return Card(
-                                      margin: const EdgeInsets.symmetric(vertical: 12),
-                                      elevation: 2,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(16),
+                                    return Container(
+                                      margin: const EdgeInsets.only(top: 8, bottom: 8),
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                          width: 1,
+                                        ),
                                       ),
-                                      color: AppUtils.getColorScheme(context).surface,
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Question Header
-                                            Row(
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: AppUtils.getColorScheme(context).primary,
-                                                    borderRadius: BorderRadius.circular(20),
-                                                  ),
-                                                  child: Text(
-                                                    'Question $overallQuestionNumber',
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Question Header
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF69c8cc),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  'Q$overallQuestionNumber',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
                                                   ),
                                                 ),
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: isMultiple ? Colors.orange.shade100 : Colors.blue.shade100,
-                                                    borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                                decoration: BoxDecoration(
+                                                  color: isMultiple
+                                                      ? Colors.deepPurple.shade50
+                                                      : Colors.blue.shade50,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  isMultiple ? 'Multiple' : 'Single',
+                                                  style: TextStyle(
+                                                    color: isMultiple
+                                                        ? Colors.deepPurple.shade700
+                                                        : Colors.blue.shade700,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
-                                                  child: Text(
-                                                    isMultiple ? 'Multiple Choice' : 'Single Choice',
-                                                    style: TextStyle(
-                                                      color: isMultiple ? Colors.orange.shade800 : Colors.blue.shade800,
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                            const SizedBox(height: 12),
+
+                                          // Question Text
+                                          Text(
+                                            questionTitle,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.grey.shade900,
+                                              height: 1.4,
+                                            ),
+                                          ),
+
+                                          if (isMultiple) ...[
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.check_box_outlined,
+                                                  size: 14,
+                                                  color: Colors.deepPurple.shade600,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Select all that apply',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.deepPurple.shade600,
+                                                    fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                               ],
                                             ),
+                                          ],
 
-                                            const SizedBox(height: 16),
-
-                                            // Question Text
-                                            Text(
-                                              questionTitle,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppUtils.getColorScheme(context).onSurface,
-                                                height: 1.4,
-                                              ),
-                                            ),
-
-                                            if (isMultiple) ...[
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'Select all that apply',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontStyle: FontStyle.italic,
-                                                  color: Colors.orange.shade700,
-                                                ),
-                                              ),
-                                            ],
-
-                                            const SizedBox(height: 20),
+                                            const SizedBox(height: 14),
 
                                             // Answer Options
                                             ...List.generate(options.length, (optIndex) {
@@ -557,35 +577,36 @@ class _ExamScreenState extends State<ExamScreen> {
                                                   });
                                                 },
                                                 child: Container(
-                                                  margin: const EdgeInsets.only(bottom: 12),
-                                                  padding: const EdgeInsets.all(16),
+                                                  margin: const EdgeInsets.only(bottom: 10),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                                   decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(12),
+                                                    borderRadius: BorderRadius.circular(8),
                                                     border: Border.all(
                                                       color: isSelected
-                                                          ? AppUtils.getColorScheme(context).primary
+                                                          ? const Color(0xFF69c8cc)
                                                           : Colors.grey.shade300,
-                                                      width: isSelected ? 2 : 1,
+                                                      width: isSelected ? 2 : 1.5,
                                                     ),
                                                     color: isSelected
-                                                        ? AppUtils.getColorScheme(context).primary.withOpacity(0.1)
-                                                        : AppUtils.getColorScheme(context).surface,
+                                                        ? const Color(0xFF69c8cc).withOpacity(0.08)
+                                                        : Colors.white,
                                                   ),
                                                   child: Row(
                                                     children: [
                                                       // Option Letter Badge
                                                       Container(
-                                                        width: 32,
-                                                        height: 32,
+                                                        width: 30,
+                                                        height: 30,
                                                         decoration: BoxDecoration(
                                                           shape: BoxShape.circle,
                                                           color: isSelected
-                                                              ? AppUtils.getColorScheme(context).primary
-                                                              : Colors.grey.shade200,
+                                                              ? const Color(0xFF69c8cc)
+                                                              : Colors.white,
                                                           border: Border.all(
                                                             color: isSelected
-                                                                ? AppUtils.getColorScheme(context).primary
+                                                                ? const Color(0xFF69c8cc)
                                                                 : Colors.grey.shade400,
+                                                            width: isSelected ? 2 : 1.5,
                                                           ),
                                                         ),
                                                         child: Center(
@@ -594,47 +615,46 @@ class _ExamScreenState extends State<ExamScreen> {
                                                             style: TextStyle(
                                                               color: isSelected
                                                                   ? Colors.white
-                                                                  : Colors.grey.shade600,
+                                                                  : Colors.grey.shade700,
                                                               fontWeight: FontWeight.bold,
-                                                              fontSize: 16,
+                                                              fontSize: 13,
                                                             ),
                                                           ),
                                                         ),
                                                       ),
-                                                      const SizedBox(width: 16),
+                                                      const SizedBox(width: 12),
 
                                                       // Option Text
                                                       Expanded(
                                                         child: Text(
                                                           options[optIndex],
                                                           style: TextStyle(
-                                                            fontSize: 16,
-                                                            color: AppUtils.getColorScheme(context).onSurface,
-                                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                                            fontSize: 14,
+                                                            color: Colors.grey.shade900,
+                                                            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                                                            height: 1.4,
                                                           ),
                                                         ),
                                                       ),
 
+                                                      const SizedBox(width: 8),
+
                                                       // Selection Indicator
-                                                      if (isSelected)
-                                                        Icon(
-                                                          isMultiple ? Icons.check_box : Icons.radio_button_checked,
-                                                          color: AppUtils.getColorScheme(context).primary,
-                                                          size: 20,
-                                                        )
-                                                      else
-                                                        Icon(
-                                                          isMultiple ? Icons.check_box_outline_blank : Icons.radio_button_unchecked,
-                                                          color: Colors.grey.shade400,
-                                                          size: 20,
-                                                        ),
+                                                      Icon(
+                                                        isSelected
+                                                            ? (isMultiple ? Icons.check_circle : Icons.check_circle)
+                                                            : (isMultiple ? Icons.circle_outlined : Icons.circle_outlined),
+                                                        color: isSelected
+                                                            ? const Color(0xFF69c8cc)
+                                                            : Colors.grey.shade400,
+                                                        size: 20,
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
                                               );
                                             }),
-                                          ],
-                                        ),
+                                        ],
                                       ),
                                     );
                                   },
@@ -645,126 +665,139 @@ class _ExamScreenState extends State<ExamScreen> {
                         }).values.toList(),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 16),
 
                       // EXAM COMPLETION SECTION
                       Container(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade200,
+                            width: 1,
+                          ),
                         ),
                         child: Column(
                           children: [
                             // Completion Status
-                            Row(
-                              children: [
-                                Icon(
-                                  answeredQuestions == totalQuestions
-                                      ? Icons.check_circle
-                                      : Icons.info_outline,
-                                  color: answeredQuestions == totalQuestions
-                                      ? Colors.green
-                                      : Colors.orange,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        answeredQuestions == totalQuestions
-                                            ? 'All questions completed!'
-                                            : 'Questions remaining',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: answeredQuestions == totalQuestions
-                                              ? Colors.green
-                                              : Colors.orange.shade700,
-                                        ),
-                                      ),
-                                      Text(
-                                        '$answeredQuestions of $totalQuestions questions answered',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                      ),
-                                    ],
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: answeredQuestions == totalQuestions
+                                    ? Colors.green.shade50
+                                    : Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    answeredQuestions == totalQuestions
+                                        ? Icons.check_circle_rounded
+                                        : Icons.pending_outlined,
+                                    color: answeredQuestions == totalQuestions
+                                        ? Colors.green.shade700
+                                        : Colors.amber.shade800,
+                                    size: 22,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          answeredQuestions == totalQuestions
+                                              ? 'All questions completed!'
+                                              : 'Keep going!',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: answeredQuestions == totalQuestions
+                                                ? Colors.green.shade700
+                                                : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$answeredQuestions of $totalQuestions answered',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: answeredQuestions == totalQuestions
+                                                ? Colors.green.shade700
+                                                : Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
 
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 14),
 
                             // Warning for incomplete exam
                             if (answeredQuestions < totalQuestions) ...[
                               Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: Colors.orange.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orange.shade200),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.orange.shade200,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Icon(
-                                      Icons.warning_amber,
+                                      Icons.info_outline,
                                       color: Colors.orange.shade700,
-                                      size: 20,
+                                      size: 16,
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        'You can submit now, but unanswered questions will be marked as incorrect.',
+                                        'Unanswered questions will be marked incorrect.',
                                         style: TextStyle(
                                           color: Colors.orange.shade700,
-                                          fontSize: 13,
+                                          fontSize: 11,
+                                          height: 1.3,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 14),
                             ],
 
                             // Submit Button
                             SizedBox(
                               width: double.infinity,
-                              height: 56,
+                              height: 48,
                               child: ElevatedButton(
                                 onPressed: submitExam,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppUtils.getColorScheme(context).primary,
+                                  backgroundColor: const Color(0xFF69c8cc),
                                   foregroundColor: Colors.white,
-                                  elevation: 2,
+                                  elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.send, size: 20),
+                                    const Icon(Icons.check_circle_outline, size: 18),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      answeredQuestions == totalQuestions
-                                          ? 'Submit Exam'
-                                          : 'Submit Incomplete Exam',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                    const Text(
+                                      'Submit Exam',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.3,
                                       ),
                                     ),
                                   ],
@@ -775,7 +808,7 @@ class _ExamScreenState extends State<ExamScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

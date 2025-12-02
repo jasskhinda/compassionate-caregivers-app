@@ -234,30 +234,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
                         case 'chat_message':
                           if (context.mounted) {
-                            debugPrint("💬 Navigating to chat from: ${data['senderName']}");
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.chatScreen,
-                              arguments: {
-                                'receiverId': data['senderId'],
-                                'receiverEmail': data['senderName'],
-                              },
-                            );
+                            final senderId = data['senderId'] ?? '';
+                            final senderName = data['senderName'] ?? 'User';
+                            if (senderId.isNotEmpty) {
+                              debugPrint("💬 Navigating to chat from: $senderName");
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.chatScreen,
+                                arguments: {
+                                  'userID': senderId,
+                                  'userName': senderName,
+                                  'userEmail': '',
+                                  'isGroupChat': false,
+                                },
+                              );
+                            } else {
+                              debugPrint("⚠️ Cannot navigate: senderId is empty");
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unable to open chat - sender info unavailable'),
+                                ),
+                              );
+                            }
                           }
                           break;
 
                         case 'group_message':
                           if (context.mounted) {
-                            debugPrint("👥 Navigating to group chat: ${data['groupName']}");
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.chatScreen,
-                              arguments: {
-                                'groupId': data['groupId'],
-                                'groupName': data['groupName'],
-                                'isGroup': true,
-                              },
-                            );
+                            final groupIdValue = data['groupId'] ?? '';
+                            final groupName = data['groupName'] ?? 'Group Chat';
+                            if (groupIdValue.isNotEmpty) {
+                              debugPrint("👥 Navigating to group chat: $groupName");
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.chatScreen,
+                                arguments: {
+                                  'groupId': groupIdValue,
+                                  'userName': groupName,
+                                  'isGroupChat': true,
+                                },
+                              );
+                            } else {
+                              debugPrint("⚠️ Cannot navigate: groupId is empty");
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Unable to open group chat - group info unavailable'),
+                                ),
+                              );
+                            }
                           }
                           break;
 

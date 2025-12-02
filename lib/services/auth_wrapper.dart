@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:caregiver/presentation/auth/login/login_screen.dart';
 import 'package:caregiver/presentation/main/main_screen.dart';
 import 'package:caregiver/services/user_document_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -20,6 +22,30 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _initializeAuth();
+  }
+
+  /// Refresh OneSignal Player ID in Firestore for the current user
+  Future<void> _refreshOneSignalPlayerId(String userId) async {
+    try {
+      // Skip on web platform
+      if (kIsWeb) return;
+
+      // Wait a bit for OneSignal to fully initialize
+      await Future.delayed(const Duration(seconds: 2));
+
+      final playerId = OneSignal.User.pushSubscription.id;
+      if (playerId != null && playerId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(userId)
+            .update({'oneSignalPlayerId': playerId});
+        debugPrint('✅ OneSignal Player ID refreshed: $playerId');
+      } else {
+        debugPrint('⚠️ OneSignal Player ID is null or empty');
+      }
+    } catch (e) {
+      debugPrint('❌ Error refreshing OneSignal Player ID: $e');
+    }
   }
 
   Future<void> _initializeAuth() async {
@@ -148,6 +174,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
               final documentCreated = docSnapshot.data ?? false;
               if (documentCreated) {
                 debugPrint('✅ AuthWrapper: User document ready - redirecting to MainScreen');
+                // Refresh OneSignal Player ID in the background
+                _refreshOneSignalPlayerId(user.uid);
                 return const MainScreen();
               } else {
                 debugPrint('❌ AuthWrapper: Failed to create user document - redirecting to LoginScreen');
